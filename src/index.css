@@ -1,0 +1,92 @@
+@import "tailwindcss";
+@import "@xyflow/react/dist/style.css";
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+/* Base UI: keep popups above app content, and let iOS Safari backdrops cover the viewport */
+body {
+  position: relative;
+}
+#root {
+  isolation: isolate;
+}
+
+/* Lexical editor content */
+.rte-placeholder {
+  @apply pointer-events-none absolute top-2 left-3 text-sm text-gray-400 select-none;
+}
+
+.rte-h1 {
+  @apply mb-1 text-2xl font-bold;
+}
+.rte-h2 {
+  @apply mb-1 text-xl font-semibold;
+}
+.rte-h3 {
+  @apply mb-1 text-lg font-semibold;
+}
+.rte-paragraph {
+  @apply mb-1;
+}
+.rte-quote {
+  @apply mb-1 border-l-4 border-gray-300 pl-3 text-gray-600 italic;
+}
+.rte-ul {
+  @apply mb-1 list-disc pl-5;
+}
+.rte-ol {
+  @apply mb-1 list-decimal pl-5;
+}
+.rte-nested-listitem {
+  @apply list-none;
+}
+.rte-checklist {
+  @apply mb-1 pl-0;
+}
+/* CheckListPlugin toggles an item when its left padding (where ::before sits) is clicked */
+.rte-listitem-checked,
+.rte-listitem-unchecked {
+  @apply relative list-none pl-6 outline-none;
+}
+.rte-listitem-checked::before,
+.rte-listitem-unchecked::before {
+  @apply absolute top-[0.2em] left-0 size-4 cursor-pointer rounded border border-gray-400 bg-white content-[''];
+}
+.rte-listitem-checked {
+  @apply text-gray-400 line-through;
+}
+.rte-listitem-checked::before {
+  @apply border-gray-900 bg-gray-900;
+}
+.rte-listitem-checked::after {
+  @apply pointer-events-none absolute top-[0.35em] left-[0.35rem] h-2 w-1 rotate-45 border-r-2 border-b-2 border-white content-[''];
+}
+.rte-nested-listitem::before,
+.rte-nested-listitem::after {
+  @apply hidden;
+}
+.rte-link {
+  @apply text-blue-600 underline;
+}
+.rte-bold {
+  @apply font-bold;
+}
+.rte-italic {
+  @apply italic;
+}
+.rte-underline {
+  @apply underline;
+}
+.rte-strikethrough {
+  @apply line-through;
+}
+.rte-underline-strikethrough {
+  text-decoration: underline line-through;
+}
+.rte-code {
+  @apply rounded bg-gray-100 px-1 font-mono text-[0.85em];
+}

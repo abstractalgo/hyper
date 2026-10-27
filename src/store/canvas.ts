@@ -29,36 +29,40 @@ type CanvasState = {
   updateNodeData: (id: string, data: Partial<EditorNodeData>) => void;
 };
 
+const newNoteId = () => crypto.randomUUID();
+
+const firstId = newNoteId();
+const secondId = newNoteId();
+
 const initialNodes: EditorNode[] = [
   {
-    id: "1",
+    id: firstId,
     type: "editor",
     position: { x: 0, y: 0 },
     data: { title: "Note 1", content: null },
   },
   {
-    id: "2",
+    id: secondId,
     type: "editor",
     position: { x: 420, y: 120 },
     data: { title: "Note 2", content: null },
   },
 ];
 
-let nextId = initialNodes.length + 1;
+// Only used to suggest a default title; IDs are random and never reused.
+let noteCounter = initialNodes.length;
 
 export const useCanvasStore = create<CanvasState>()((set) => ({
   nodes: initialNodes,
-  edges: [{ id: "e1-2", source: "1", target: "2" }],
+  edges: [{ id: `e-${firstId}-${secondId}`, source: firstId, target: secondId }],
   onNodesChange: (changes) => set((s) => ({ nodes: applyNodeChanges(changes, s.nodes) })),
   onEdgesChange: (changes) => set((s) => ({ edges: applyEdgeChanges(changes, s.edges) })),
   onConnect: (connection) => set((s) => ({ edges: addEdge(connection, s.edges) })),
   addNode: (position) => {
-    const id = String(nextId++);
+    const id = newNoteId();
+    const title = `Note ${++noteCounter}`;
     set((s) => ({
-      nodes: [
-        ...s.nodes,
-        { id, type: "editor", position, data: { title: `Note ${id}`, content: null } },
-      ],
+      nodes: [...s.nodes, { id, type: "editor", position, data: { title, content: null } }],
     }));
   },
   updateNodeData: (id, data) =>

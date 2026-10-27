@@ -69,6 +69,12 @@ body {
 .rte-nested-listitem::after {
   @apply hidden;
 }
+.rte-mention {
+  @apply cursor-pointer rounded bg-blue-50 px-1 font-medium text-blue-700 hover:bg-blue-100;
+}
+.rte-mention-missing {
+  @apply cursor-default bg-gray-100 text-gray-400 line-through hover:bg-gray-100;
+}
 .rte-link {
   @apply text-blue-600 underline;
 }

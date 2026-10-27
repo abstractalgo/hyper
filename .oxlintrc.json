@@ -16,5 +16,13 @@
       }
     ]
   },
-  "ignorePatterns": ["dist", ".yarn"]
+  "ignorePatterns": ["dist", ".yarn"],
+  "overrides": [
+    {
+      "files": ["src/editor/**/*Node.tsx", "src/editor/**/*Node.ts"],
+      "rules": {
+        "no-underscore-dangle": "off"
+      }
+    }
+  ]
 }

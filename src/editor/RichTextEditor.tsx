@@ -18,12 +18,14 @@ import type { EditorState } from "lexical";
 import { useState } from "react";
 
 import { MARKDOWN_TRANSFORMERS } from "./markdown.ts";
+import { MentionsPlugin } from "./mentions/MentionsPlugin.tsx";
+import { NoteMentionNode } from "./mentions/NoteMentionNode.tsx";
 import { editorTheme } from "./theme.ts";
-import { Toolbar } from "./Toolbar.tsx";
 import { AUTO_LINK_MATCHERS, isSafeUrl } from "./url.ts";
 
 type RichTextEditorProps = {
-  namespace: string;
+  /** ID of the note this editor belongs to. */
+  noteId: string;
   /** Serialized editor state to start from. Only read on mount. */
   initialContent: string | null;
   onChange: (serialized: string) => void;
@@ -31,16 +33,24 @@ type RichTextEditorProps = {
 };
 
 export function RichTextEditor({
-  namespace,
+  noteId,
   initialContent,
   onChange,
   placeholder = "Start typing…",
 }: RichTextEditorProps) {
   // Lexical owns its state after mount; freeze the initial config so re-renders don't reset it.
   const [initialConfig] = useState<InitialConfigType>(() => ({
-    namespace,
+    namespace: `note-${noteId}`,
     theme: editorTheme,
-    nodes: [HeadingNode, QuoteNode, ListNode, ListItemNode, LinkNode, AutoLinkNode],
+    nodes: [
+      HeadingNode,
+      QuoteNode,
+      ListNode,
+      ListItemNode,
+      LinkNode,
+      AutoLinkNode,
+      NoteMentionNode,
+    ],
     editorState: initialContent ?? undefined,
     onError: (error) => {
       console.error(error);
@@ -53,7 +63,6 @@ export function RichTextEditor({
 
   return (
     <LexicalComposer initialConfig={initialConfig}>
-      <Toolbar />
       <div className="relative">
         <RichTextPlugin
           contentEditable={
@@ -77,6 +86,7 @@ export function RichTextEditor({
       />
       <AutoLinkPlugin matchers={AUTO_LINK_MATCHERS} />
       <ClickableLinkPlugin newTab />
+      <MentionsPlugin noteId={noteId} />
       <MarkdownShortcutPlugin transformers={MARKDOWN_TRANSFORMERS} />
       <OnChangePlugin onChange={handleChange} ignoreSelectionChange />
     </LexicalComposer>

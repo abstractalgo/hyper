@@ -15,6 +15,17 @@ body {
   isolation: isolate;
 }
 
+/* Note handles: anchors for @mention edges, not interactive */
+.react-flow__handle.note-handle {
+  @apply size-1.5 min-h-0 min-w-0 border-0 bg-gray-400;
+}
+
+/* Invisible resize hit area on the bottom-right corner; only the cursor hints at it. */
+.react-flow__resize-control.note-resize-control {
+  @apply size-3 border-0 bg-transparent;
+  cursor: nwse-resize;
+}
+
 /* Lexical editor content */
 .rte-placeholder {
   @apply pointer-events-none absolute top-2 left-3 text-sm text-gray-400 select-none;

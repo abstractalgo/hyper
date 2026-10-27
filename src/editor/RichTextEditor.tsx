@@ -1,5 +1,3 @@
-import { LinkNode, AutoLinkNode } from "@lexical/link";
-import { ListItemNode, ListNode } from "@lexical/list";
 import { LexicalComposer, type InitialConfigType } from "@lexical/react/LexicalComposer";
 import { AutoLinkPlugin } from "@lexical/react/LexicalAutoLinkPlugin";
 import { CheckListPlugin } from "@lexical/react/LexicalCheckListPlugin";
@@ -13,13 +11,12 @@ import { MarkdownShortcutPlugin } from "@lexical/react/LexicalMarkdownShortcutPl
 import { OnChangePlugin } from "@lexical/react/LexicalOnChangePlugin";
 import { RichTextPlugin } from "@lexical/react/LexicalRichTextPlugin";
 import { TabIndentationPlugin } from "@lexical/react/LexicalTabIndentationPlugin";
-import { HeadingNode, QuoteNode } from "@lexical/rich-text";
 import type { EditorState } from "lexical";
 import { useState } from "react";
 
 import { MARKDOWN_TRANSFORMERS } from "./markdown.ts";
 import { MentionsPlugin } from "./mentions/MentionsPlugin.tsx";
-import { NoteMentionNode } from "./mentions/NoteMentionNode.tsx";
+import { EDITOR_NODES } from "./nodes.ts";
 import { editorTheme } from "./theme.ts";
 import { AUTO_LINK_MATCHERS, isSafeUrl } from "./url.ts";
 
@@ -42,15 +39,7 @@ export function RichTextEditor({
   const [initialConfig] = useState<InitialConfigType>(() => ({
     namespace: `note-${noteId}`,
     theme: editorTheme,
-    nodes: [
-      HeadingNode,
-      QuoteNode,
-      ListNode,
-      ListItemNode,
-      LinkNode,
-      AutoLinkNode,
-      NoteMentionNode,
-    ],
+    nodes: EDITOR_NODES,
     editorState: initialContent ?? undefined,
     onError: (error) => {
       console.error(error);

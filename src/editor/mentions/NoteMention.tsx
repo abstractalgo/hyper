@@ -18,6 +18,8 @@ export function NoteMention({ noteId }: { noteId: string }) {
     <button
       type="button"
       className="rte-mention"
+      // Read by useMentionAnchors to place this mention's edge handle.
+      data-mention-target={noteId}
       title={`Go to “${title}”`}
       onClick={() => void fitView({ nodes: [{ id: noteId }], duration: 300, maxZoom: 1 })}
     >

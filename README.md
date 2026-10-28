@@ -57,8 +57,10 @@ something, and the links follow.
 
 ### Give notes a type and fields
 
-Click the icon in a note's title bar to choose its type. Types come with **fields**, shown and
-edited right inside the note:
+Click the icon in a note's title bar to choose its type and, optionally, a **color**. A colored
+note gets a tinted title bar, and every mention of it is highlighted in the same color, so an epic
+or a bug stands out wherever it's referenced. Types come with **fields**, shown and edited right
+inside the note:
 
 | Field type        | Holds                                                          |
 | ----------------- | -------------------------------------------------------------- |
@@ -116,4 +118,4 @@ Then open http://localhost:5173.
 | `yarn build`   | Type-check and build for production |
 | `yarn preview` | Serve the production build          |
 | `yarn lint`    | Lint with oxlint                    |
-| `yarn format`  | Format with oxfmt                   |
+| `yarn fmt`     | Format with oxfmt                   |

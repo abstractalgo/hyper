@@ -11,6 +11,7 @@ import {
   initialValue,
   type FieldDef,
   type FieldValue,
+  type OptionColor,
   type Schema,
 } from "../workspace/model.ts";
 
@@ -20,6 +21,8 @@ export type EditorNodeData = {
   schemaId: string | null;
   /** Values of the schema's fields, by field ID. */
   fields: Record<string, FieldValue>;
+  /** Tints the note's title bar and its mentions; unset for the default look. */
+  color?: OptionColor | null;
   /** Serialized Lexical editor state (JSON), or null for an empty editor. */
   content: string | null;
 };
@@ -185,6 +188,7 @@ type NewNote = {
   position: XYPosition;
   schemaId?: string | null;
   fields?: Record<string, FieldValue>;
+  color?: OptionColor | null;
   content?: string | null;
   id?: string;
 };
@@ -194,6 +198,7 @@ export const createNote = ({
   position,
   schemaId = null,
   fields = {},
+  color = null,
   content = null,
   id = newNoteId(),
 }: NewNote): EditorNode => ({
@@ -201,7 +206,7 @@ export const createNote = ({
   type: "editor",
   position,
   width: NOTE_WIDTH,
-  data: { title, schemaId, fields, content },
+  data: { title, schemaId, fields, color, content },
 });
 
 /** Only what's worth saving: drops React Flow's runtime state (measured size, selection…). */
@@ -230,7 +235,8 @@ export const useCanvasStore = create<CanvasState>()(
       onNodesChange: (changes) =>
         set((s) => {
           const removed = changes.flatMap((c) => (c.type === "remove" ? [c.id] : []));
-          if (removed.length === 0) return { nodes: withoutHeight(applyNodeChanges(changes, s.nodes)) };
+          if (removed.length === 0)
+            return { nodes: withoutHeight(applyNodeChanges(changes, s.nodes)) };
           const mentionAnchors = { ...s.mentionAnchors };
           for (const id of removed) delete mentionAnchors[id];
           const nodes = withoutHeight(applyNodeChanges(changes, s.nodes));

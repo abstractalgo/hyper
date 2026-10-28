@@ -120,6 +120,7 @@ const ref = (note: NoteKey) => ({ ref: note });
 type SampleNote = {
   title: string;
   schema: SchemaKey;
+  color?: OptionColor;
   fields?: SampleFields;
   x: number;
   y: number;
@@ -135,6 +136,7 @@ const SAMPLE: Record<NoteKey, SampleNote> = {
   epic: {
     title: "Expense submission (EXP-1)",
     schema: "epic",
+    color: "purple",
     fields: { status: ["In progress"], assignee: [ref("ana")], target: ["2027-03-31"] },
     x: 0,
     y: 140,
@@ -359,6 +361,7 @@ const SAMPLE: Record<NoteKey, SampleNote> = {
   heicBug: {
     title: "HEIC uploads fail on Safari (EXP-9)",
     schema: "bug",
+    color: "red",
     fields: {
       status: ["To do"],
       severity: ["High"],
@@ -573,6 +576,7 @@ export function createSampleBoard(): Board {
       title: note.title,
       schemaId: schema.id,
       fields: values,
+      color: note.color,
       position: { x: note.x, y: note.y },
       content,
       id: ids[key],

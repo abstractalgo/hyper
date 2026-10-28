@@ -3,10 +3,12 @@ import { useEffect, useRef, type MouseEvent } from "react";
 
 import { locateMention } from "../../components/useMentionAnchors.ts";
 import { NoteIcon } from "../../workspace/icons.tsx";
+import { OPTION_COLOR_CLASSES } from "../../workspace/model.ts";
 import { useCanvasStore } from "../../store/canvas.ts";
 
 export function NoteMention({ noteId }: { noteId: string }) {
   const title = useCanvasStore((s) => s.nodes.find((n) => n.id === noteId)?.data.title);
+  const color = useCanvasStore((s) => s.nodes.find((n) => n.id === noteId)?.data.color);
   const { getInternalNode, getZoom, setCenter } = useReactFlow();
   const flowStore = useStoreApi();
   const setHighlight = useCanvasStore((s) => s.setHighlight);
@@ -56,7 +58,9 @@ export function NoteMention({ noteId }: { noteId: string }) {
   return (
     <button
       type="button"
-      className="rte-mention"
+      className={
+        color ? `rte-mention rte-mention-colored ${OPTION_COLOR_CLASSES[color]}` : "rte-mention"
+      }
       // Read by useMentionAnchors to place this mention's edge handle.
       data-mention-target={noteId}
       onClick={goToNote}

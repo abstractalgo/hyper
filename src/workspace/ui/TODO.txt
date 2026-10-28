@@ -1,8 +1,10 @@
-type system with nodes (references)
 auto-increment for task IDs
-configurable custom rendering of schemas in nodes and @mentions
-hover in properties also highlights the nodes in the canvas
+configurable custom layout rendering of schemas in nodes and @mentions
+type system with nodes (references)
   properties are just RTE nodes
-  background color is a property of a node
+  hover in properties also highlights the nodes in the canvas
+  ~background color is a property of a node~
+  hide certain nodes (and links) from canvas
 inline rendering of properties
 links have properties
+ref nodes (transclusion)

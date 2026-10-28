@@ -8,6 +8,7 @@ import {
 import { memo, useCallback, useLayoutEffect, useRef } from "react";
 
 import { RichTextEditor } from "../editor/RichTextEditor.tsx";
+import { OPTION_COLOR_CLASSES, type OptionColor } from "../workspace/model.ts";
 import { isNoteHighlighted, useCanvasStore, type EditorNode } from "../store/canvas.ts";
 import { NoteProperties } from "./NoteProperties.tsx";
 import { NoteSchemaMenu } from "./NoteSchemaMenu.tsx";
@@ -54,6 +55,10 @@ export const EditorNodeView = memo(function EditorNodeView({
     (schemaId: string | null) => setNoteSchema(id, schemaId),
     [id, setNoteSchema],
   );
+  const handleColorChange = useCallback(
+    (color: OptionColor | null) => updateNodeData(id, { color }),
+    [id, updateNodeData],
+  );
   const handleRename = useCallback(
     (title: string) => updateNodeData(id, { title }),
     [id, updateNodeData],
@@ -70,8 +75,19 @@ export const EditorNodeView = memo(function EditorNodeView({
             : "border-gray-200"
       }`}
     >
-      <div className="relative flex shrink-0 cursor-grab items-center gap-1.5 rounded-t-lg border-b border-gray-200 bg-gray-50 py-1.5 pr-3 pl-2 text-sm font-semibold text-gray-900 active:cursor-grabbing">
-        <NoteSchemaMenu schemaId={data.schemaId} onChange={handleSchemaChange} />
+      <div
+        className={`relative flex shrink-0 cursor-grab items-center gap-1.5 rounded-t-lg border-b py-1.5 pr-3 pl-2 text-sm font-semibold active:cursor-grabbing ${
+          data.color
+            ? `border-black/5 ${OPTION_COLOR_CLASSES[data.color]}`
+            : "border-gray-200 bg-gray-50 text-gray-900"
+        }`}
+      >
+        <NoteSchemaMenu
+          schemaId={data.schemaId}
+          color={data.color ?? null}
+          onSchemaChange={handleSchemaChange}
+          onColorChange={handleColorChange}
+        />
         <div className="min-w-0 flex-1">
           <NoteTitle title={data.title} onRename={handleRename} />
         </div>

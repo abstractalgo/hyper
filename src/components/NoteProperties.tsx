@@ -25,9 +25,7 @@ export function NoteProperties({ noteId }: { noteId: string }) {
   return (
     <PopupContainerContext.Provider value={viewportPortal}>
       {/* nodrag: using inputs shouldn't drag the note */}
-      <dl
-        className="nodrag grid shrink-0 grid-cols-[minmax(4rem,auto)_1fr] items-center gap-x-2 gap-y-0.5 border-b border-gray-100 px-3 py-1.5"
-      >
+      <dl className="nodrag grid shrink-0 grid-cols-[minmax(4rem,auto)_1fr] items-center gap-x-2 gap-y-0.5 border-b border-gray-100 px-3 py-1.5">
         {fields.map((field) => (
           <div key={field.id} className="contents">
             <dt className="truncate text-xs text-gray-500" title={field.name}>

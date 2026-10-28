@@ -40,7 +40,7 @@ export function NoteMention({ noteId }: { noteId: string }) {
   if (title === undefined) {
     return (
       <span className="rte-mention rte-mention-missing" title="This note was deleted">
-        @deleted note
+        deleted note
       </span>
     );
   }
@@ -55,7 +55,7 @@ export function NoteMention({ noteId }: { noteId: string }) {
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
-      @{title}
+      {title}
     </button>
   );
 }

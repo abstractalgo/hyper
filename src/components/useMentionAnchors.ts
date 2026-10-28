@@ -4,10 +4,10 @@ import { useLayoutEffect, useState, type RefObject } from "react";
 import type { MentionAnchor } from "../store/canvas.ts";
 
 /** Attribute set on each rendered mention whose target note exists (see NoteMention). */
-export const MENTION_TARGET_ATTR = "data-mention-target";
+const MENTION_TARGET_ATTR = "data-mention-target";
 
 /** Handle ID for the `index`-th mention in a note, in document order. */
-export const mentionHandleId = (index: number) => `mention-${index}`;
+const mentionHandleId = (index: number) => `mention-${index}`;
 
 /** The note containing a rendered mention element, and the ID of that mention's handle. */
 export function locateMention(el: Element): { sourceId: string; handleId: string } | null {

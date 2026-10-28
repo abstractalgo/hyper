@@ -4,63 +4,35 @@ import { newId, useCanvasStore } from "../../store/canvas.ts";
 import { IconByName } from "../icons.tsx";
 import { customIconRef, validateCustomIcon, type CustomIcon } from "../model.ts";
 import {
-  dangerButtonClass,
-  EditorPane,
+  DeleteButton,
+  FormErrors,
   FormRow,
-  ListPane,
+  SettingsCollection,
   textInputClass,
   useAutoSave,
+  type ItemFormProps,
+  type ListItem,
 } from "./settingsLayout.tsx";
 
 const blankIcon = (): CustomIcon => ({ id: newId(), name: "", url: "" });
 
 /** Workspace custom icons: a slug and an image URL each, usable wherever icons are picked. */
+const iconListItem = (icon: CustomIcon): ListItem => ({
+  id: icon.id,
+  label: icon.name,
+  icon: <IconByName name={customIconRef(icon.id)} className="size-4" />,
+});
+
 export function IconsTab() {
   const icons = useCanvasStore((s) => s.customIcons);
-  const [selectedId, setSelectedId] = useState<string | null>(icons[0]?.id ?? null);
-  const [draft, setDraft] = useState<CustomIcon | null>(icons[0] ?? null);
-
-  const select = (icon: CustomIcon) => {
-    setSelectedId(icon.id);
-    setDraft(icon);
-  };
-
   return (
-    <div className="flex min-h-0 flex-1">
-      <ListPane
-        items={icons.map((icon) => ({
-          id: icon.id,
-          label: icon.name,
-          icon: <IconByName name={customIconRef(icon.id)} className="size-4" />,
-        }))}
-        selectedId={selectedId}
-        onSelect={(id) => select(icons.find((i) => i.id === id)!)}
-        addLabel="New icon"
-        onAdd={() => {
-          setSelectedId(null);
-          setDraft(blankIcon());
-        }}
-      />
-      <EditorPane>
-        {draft ? (
-          <IconForm
-            key={draft.id}
-            initial={draft}
-            isNew={!icons.some((i) => i.id === draft.id)}
-            onSaved={select}
-            onDeleted={() => {
-              setSelectedId(null);
-              setDraft(null);
-            }}
-          />
-        ) : (
-          <p className="text-sm text-gray-500">
-            Custom icons are images you can use anywhere an icon is picked: a note (e.g. a person's
-            avatar), a type, a field, or an Icon field's value. Create one to start.
-          </p>
-        )}
-      </EditorPane>
-    </div>
+    <SettingsCollection
+      items={icons}
+      toListItem={iconListItem}
+      actions={[{ label: "New icon", create: blankIcon }]}
+      Form={IconForm}
+      emptyText="Custom icons are images you can use anywhere an icon is picked: a note (e.g. a person's avatar), a type, a field, or an Icon field's value. Create one to start."
+    />
   );
 }
 
@@ -80,17 +52,7 @@ function useIconUsage(ref: string) {
   });
 }
 
-function IconForm({
-  initial,
-  isNew,
-  onSaved,
-  onDeleted,
-}: {
-  initial: CustomIcon;
-  isNew: boolean;
-  onSaved: (icon: CustomIcon) => void;
-  onDeleted: () => void;
-}) {
+function IconForm({ initial, isNew, onSaved, onDeleted }: ItemFormProps<CustomIcon>) {
   const [draft, setDraft] = useState(initial);
   const icons = useCanvasStore((s) => s.customIcons);
   const saveCustomIcon = useCanvasStore((s) => s.saveCustomIcon);
@@ -161,20 +123,9 @@ function IconForm({
         </FormRow>
       )}
 
-      {errors.length > 0 && (draft.name || draft.url) && (
-        <ul className="text-xs text-red-600">
-          {errors.map((e) => (
-            <li key={e}>{e}</li>
-          ))}
-        </ul>
-      )}
-      {!isNew && (
-        <div className="pt-1">
-          <button type="button" onClick={handleDelete} className={dangerButtonClass}>
-            Delete icon
-          </button>
-        </div>
-      )}
+      {/* A blank new icon isn't an error yet. */}
+      <FormErrors errors={draft.name || draft.url ? errors : []} />
+      {!isNew && <DeleteButton label="Delete icon" onClick={handleDelete} />}
     </form>
   );
 }

@@ -1,10 +1,10 @@
 import { StickyNoteIcon } from "lucide-react";
 import { DynamicIcon, iconNames, type IconName } from "lucide-react/dynamic";
 
-import { useCanvasStore } from "../store/canvas.ts";
+import { useCanvasStore, useNoteData } from "../store/canvas.ts";
 import {
   customIconId,
-  FIELD_TYPE_ICONS,
+  FIELD_TYPE_SPECS,
   fieldIcon,
   SCHEMA_COLOR_CLASSES,
   type FieldDef,
@@ -51,24 +51,24 @@ export function IconByName({
   );
 }
 
-/** A field's icon (its own, or its type's), in muted gray. */
+/**
+ * A field's icon (its own, or its type's), in muted gray. Decorative: it always sits next to the
+ * field's name, so it isn't announced separately.
+ */
 export function FieldIcon({
   field,
   className = "",
-}: IconProps & { field: Pick<FieldDef, "icon" | "type" | "name"> }) {
-  return (
-    <IconByName
-      name={fieldIcon(field)}
-      label={field.name}
-      className={`shrink-0 text-gray-500 ${className}`}
-    />
-  );
+}: IconProps & { field: Pick<FieldDef, "icon" | "type"> }) {
+  return <IconByName name={fieldIcon(field)} className={`shrink-0 text-gray-500 ${className}`} />;
 }
 
 /** A type's icon (Text, Number, …), in muted gray. */
 export function FieldTypeIcon({ type, className = "" }: IconProps & { type: FieldType }) {
   return (
-    <IconByName name={FIELD_TYPE_ICONS[type]} className={`shrink-0 text-gray-500 ${className}`} />
+    <IconByName
+      name={FIELD_TYPE_SPECS[type].icon}
+      className={`shrink-0 text-gray-500 ${className}`}
+    />
   );
 }
 
@@ -97,10 +97,8 @@ export function NoteIcon({
   /** Whether plain notes (no type, no icon of their own) get the sticky-note icon, or nothing. */
   showPlain?: boolean;
 }) {
-  const schemaId = useCanvasStore(
-    (s) => s.nodes.find((n) => n.id === noteId)?.data.schemaId ?? null,
-  );
-  const icon = useCanvasStore((s) => s.nodes.find((n) => n.id === noteId)?.data.icon);
+  const schemaId = useNoteData(noteId, "schemaId") ?? null;
+  const icon = useNoteData(noteId, "icon");
   if (icon) return <IconByName name={icon} className={`shrink-0 ${className}`} />;
   if (schemaId === null && !showPlain) return null;
   return <SchemaIcon schemaId={schemaId} className={className} />;

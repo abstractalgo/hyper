@@ -1,6 +1,6 @@
 import { useShallow } from "zustand/react/shallow";
 
-import { useCanvasStore } from "../store/canvas.ts";
+import { useCanvasStore, useNoteData } from "../store/canvas.ts";
 import type { FieldDef } from "../workspace/model.ts";
 import { FieldValueEditor } from "../workspace/ui/FieldValueEditor.tsx";
 import { PopupContainerContext, useViewportPortal } from "../workspace/ui/popups.tsx";
@@ -17,7 +17,7 @@ export function NoteProperties({ noteId }: { noteId: string }) {
         .filter((f): f is FieldDef => f !== undefined);
     }),
   );
-  const values = useCanvasStore((s) => s.nodes.find((n) => n.id === noteId)?.data.fields);
+  const values = useNoteData(noteId, "fields");
   const setNoteField = useCanvasStore((s) => s.setNoteField);
   const viewportPortal = useViewportPortal();
 

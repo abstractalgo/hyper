@@ -3,16 +3,18 @@ import { useState } from "react";
 
 import { newId, useCanvasStore } from "../../store/canvas.ts";
 import { FieldIcon, IconByName, SchemaIcon } from "../icons.tsx";
-import { FIELD_TYPE_LABELS, SCHEMA_COLOR_CLASSES, SCHEMA_COLORS, type Schema } from "../model.ts";
+import { FIELD_TYPE_SPECS, SCHEMA_COLOR_CLASSES, SCHEMA_COLORS, type Schema } from "../model.ts";
 import { Dropdown } from "./Dropdown.tsx";
 import { IconPicker } from "./IconPicker.tsx";
 import {
-  dangerButtonClass,
-  EditorPane,
+  DeleteButton,
+  FormErrors,
   FormRow,
-  ListPane,
+  SettingsCollection,
   textInputClass,
   useAutoSave,
+  type ItemFormProps,
+  type ListItem,
 } from "./settingsLayout.tsx";
 
 const blankSchema = (): Schema => ({
@@ -23,64 +25,27 @@ const blankSchema = (): Schema => ({
   fieldIds: [],
 });
 
+const schemaListItem = (sc: Schema): ListItem => ({
+  id: sc.id,
+  label: sc.name,
+  detail: `${sc.fieldIds.length} field${sc.fieldIds.length === 1 ? "" : "s"}${sc.builtIn ? " · built-in" : ""}`,
+  icon: <SchemaIcon schemaId={sc.id} className="size-4" />,
+});
+
 export function SchemasTab() {
   const schemas = useCanvasStore((s) => s.schemas);
-  const [selectedId, setSelectedId] = useState<string | null>(schemas[0]?.id ?? null);
-  const [draft, setDraft] = useState<Schema | null>(schemas[0] ?? null);
-
-  const select = (schema: Schema) => {
-    setSelectedId(schema.id);
-    setDraft(schema);
-  };
-
   return (
-    <div className="flex min-h-0 flex-1">
-      <ListPane
-        items={schemas.map((sc) => ({
-          id: sc.id,
-          label: sc.name,
-          detail: `${sc.fieldIds.length} field${sc.fieldIds.length === 1 ? "" : "s"}${sc.builtIn ? " · built-in" : ""}`,
-          icon: <SchemaIcon schemaId={sc.id} className="size-4" />,
-        }))}
-        selectedId={selectedId}
-        onSelect={(id) => select(schemas.find((sc) => sc.id === id)!)}
-        addLabel="New schema"
-        onAdd={() => {
-          setSelectedId(null);
-          setDraft(blankSchema());
-        }}
-      />
-      <EditorPane>
-        {draft ? (
-          <SchemaForm
-            key={draft.id}
-            initial={draft}
-            isNew={!schemas.some((sc) => sc.id === draft.id)}
-            onSaved={select}
-            onDeleted={() => {
-              setSelectedId(null);
-              setDraft(null);
-            }}
-          />
-        ) : (
-          <p className="text-sm text-gray-500">Select a schema, or create a new one.</p>
-        )}
-      </EditorPane>
-    </div>
+    <SettingsCollection
+      items={schemas}
+      toListItem={schemaListItem}
+      actions={[{ label: "New schema", create: blankSchema }]}
+      Form={SchemaForm}
+      emptyText="Select a schema, or create a new one."
+    />
   );
 }
 
-function SchemaForm({
-  initial,
-  isNew,
-  onSaved,
-  onDeleted,
-}: {
-  initial: Schema;
-  isNew: boolean;
-  onSaved: (schema: Schema) => void;
-  onDeleted: () => void;
-}) {
+function SchemaForm({ initial, isNew, onSaved, onDeleted }: ItemFormProps<Schema>) {
   const [draft, setDraft] = useState(initial);
   const fields = useCanvasStore((s) => s.fields);
   const noteCount = useCanvasStore(
@@ -181,14 +146,13 @@ function SchemaForm({
       <FormRow label="Fields" hint="Notes of this type show these fields, in this order.">
         <ul className="divide-y divide-gray-100 rounded border border-gray-200">
           {included.map((field, i) => {
-            const locked = draft.builtIn && field.builtIn;
             return (
               <li key={field.id} className="flex items-center gap-2 px-2 py-1.5 text-sm">
                 <FieldIcon field={field} className="size-3.5" />
                 <span className="min-w-0 flex-1 truncate">
                   {field.name}
                   <span className="ml-2 text-xs text-gray-500">
-                    {FIELD_TYPE_LABELS[field.type]}
+                    {FIELD_TYPE_SPECS[field.type].label}
                   </span>
                 </span>
                 <button
@@ -212,8 +176,6 @@ function SchemaForm({
                 <button
                   type="button"
                   aria-label={`Remove ${field.name}`}
-                  disabled={locked}
-                  title={locked ? "Built-in field of a built-in schema" : undefined}
                   onClick={() => removeField(field)}
                   className="rounded p-1 text-gray-500 hover:bg-gray-100 disabled:opacity-30"
                 >
@@ -234,7 +196,7 @@ function SchemaForm({
             onChange={(id) => update({ fieldIds: [...draft.fieldIds, id] })}
             items={available.map((f) => ({
               value: f.id,
-              label: `${f.name} (${FIELD_TYPE_LABELS[f.type]})`,
+              label: `${f.name} (${FIELD_TYPE_SPECS[f.type].label})`,
               icon: <FieldIcon field={f} className="size-3.5" />,
             }))}
             className="mt-2"
@@ -247,14 +209,8 @@ function SchemaForm({
         </FormRow>
       )}
 
-      {nameError && <p className="text-xs text-red-600">{nameError}</p>}
-      {!isNew && !draft.builtIn && (
-        <div className="pt-1">
-          <button type="button" onClick={handleDelete} className={dangerButtonClass}>
-            Delete schema
-          </button>
-        </div>
-      )}
+      <FormErrors errors={nameError ? [nameError] : []} />
+      {!isNew && !draft.builtIn && <DeleteButton label="Delete schema" onClick={handleDelete} />}
     </form>
   );
 }

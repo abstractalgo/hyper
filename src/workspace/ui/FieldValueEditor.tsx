@@ -4,10 +4,13 @@ import { useState, type KeyboardEvent } from "react";
 import { useCanvasStore } from "../../store/canvas.ts";
 import { IconByName } from "../icons.tsx";
 import {
+  atomsOf,
+  FIELD_TYPE_SPECS,
   formatDateAtom,
   parseAtom,
   type FieldAtom,
   type FieldDef,
+  type FieldType,
   type FieldValue,
 } from "../model.ts";
 import { IconPicker } from "./IconPicker.tsx";
@@ -62,7 +65,7 @@ export function FieldValueEditor({
     return (
       <SelectEditor
         field={field}
-        value={value}
+        value={atomsOf("select", value)}
         onChange={onChange}
         onOptionIdsChange={(optionIds) => changeField({ ...field, optionIds })}
         onCreateOption={(title) => {
@@ -112,24 +115,9 @@ export function FieldValueEditor({
   );
 }
 
-/** Single values of these types are edited in place with a plain input. */
-const isInlineType = (type: FieldDef["type"]) =>
-  type === "text" ||
-  type === "number" ||
-  type === "date" ||
-  type === "datetime" ||
-  type === "image";
-
-const nativeInputType = (type: FieldDef["type"]) =>
-  type === "number"
-    ? "number"
-    : type === "date"
-      ? "date"
-      : type === "datetime"
-        ? "datetime-local"
-        : type === "image"
-          ? "url"
-          : "text";
+/** Single values of types with a native input (text, number, URL, dates) are edited in place. */
+const isInlineType = (type: FieldType) => FIELD_TYPE_SPECS[type].input !== null;
+const nativeInputType = (type: FieldType) => FIELD_TYPE_SPECS[type].input ?? "text";
 
 /** A single text/number/date/image value, edited in place; commits on Enter/blur (or pick). */
 function InlineAtomInput({

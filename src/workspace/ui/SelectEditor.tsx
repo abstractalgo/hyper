@@ -1,59 +1,60 @@
 import { Popover } from "@base-ui/react/popover";
-import { go as fuzzySearch } from "fuzzysort";
 import { ChevronLeftIcon, EllipsisIcon, MinusCircleIcon, XIcon } from "lucide-react";
-import { useMemo, useRef, useState, type KeyboardEvent } from "react";
+import { useRef, useState } from "react";
 
-import { useCanvasStore, type EditorNode } from "../../store/canvas.ts";
+import { useCanvasStore, useNoteData, type EditorNode } from "../../store/canvas.ts";
+import { rowKey, searchNotes, type NoteRow } from "../noteSearch.ts";
 import { NoteIcon } from "../icons.tsx";
 import {
-  OPTION_COLOR_CLASSES,
-  OPTION_COLORS,
-  type FieldDef,
-  type FieldValue,
-  type OptionColor,
+  NOTE_COLOR_CLASSES,
+  NOTE_COLORS,
+  type NoteColor,
+  type NoteId,
+  type SelectFieldDef,
 } from "../model.ts";
 import { POPUP_CLASS, POSITIONER_CLASS, usePopupContainer } from "./popups.tsx";
+import { ResultList, useListNavigation } from "./ResultList.tsx";
 
-const MAX_OTHER_MATCHES = 8;
+/** A stable empty list for the closed picker's store selector. */
+const NO_NOTES: EditorNode[] = [];
 
 type SelectEditorProps = {
-  field: FieldDef;
+  field: SelectFieldDef;
   /** Selected note IDs. */
-  value: FieldValue;
-  onChange: (value: FieldValue) => void;
+  value: NoteId[];
+  onChange: (value: NoteId[]) => void;
   /** The field's option list changed (an option was removed from it). */
-  onOptionIdsChange: (optionIds: string[]) => void;
+  onOptionIdsChange: (optionIds: NoteId[]) => void;
   /** Creates a note titled `title` as a new option of this field; returns its ID. */
-  onCreateOption: (title: string) => string;
+  onCreateOption: (title: string) => NoteId;
   /** The note being edited, if any: excluded from the choices. */
-  noteId?: string;
+  noteId?: NoteId;
   /** Whether the last value may be removed (false for mandatory fields). */
   allowEmpty: boolean;
 };
 
 /** A selected or offered note: its title on its own color, with its icon. */
 export function NotePill({ noteId, onRemove }: { noteId: string; onRemove?: () => void }) {
-  const note = useCanvasStore((s) => s.nodes.find((n) => n.id === noteId));
-  if (!note) {
+  const title = useNoteData(noteId, "title");
+  const color = useNoteData(noteId, "color");
+  if (title === undefined) {
     return (
       <span className="rounded px-1.5 text-xs leading-5 text-gray-400 line-through">
         deleted note
       </span>
     );
   }
-  const colors = note.data.color
-    ? OPTION_COLOR_CLASSES[note.data.color]
-    : "bg-gray-100 text-gray-800";
+  const colors = color ? NOTE_COLOR_CLASSES[color] : "bg-gray-100 text-gray-800";
   return (
     <span
       className={`inline-flex max-w-full items-center gap-1 rounded px-1.5 py-px text-xs leading-5 ${colors}`}
     >
       <NoteIcon noteId={noteId} className="size-3.5" showPlain={false} />
-      <span className="truncate">{note.data.title}</span>
+      <span className="truncate">{title}</span>
       {onRemove && (
         <button
           type="button"
-          aria-label={`Remove ${note.data.title}`}
+          aria-label={`Remove ${title}`}
           onClick={onRemove}
           className="-mr-1 rounded opacity-60 hover:opacity-100"
         >
@@ -64,7 +65,15 @@ export function NotePill({ noteId, onRemove }: { noteId: string; onRemove?: () =
   );
 }
 
-type Row = { kind: "option" | "other"; note: EditorNode } | { kind: "create"; title: string };
+/** The "Create …" row at the end of note search results. */
+export function CreateRow({ title }: { title: string }) {
+  return (
+    <>
+      Create
+      <span className="truncate rounded bg-gray-100 px-1.5 leading-5 text-gray-800">{title}</span>
+    </>
+  );
+}
 
 /**
  * Notion-style select whose options are notes. With nothing typed it lists the field's options;
@@ -81,61 +90,33 @@ export function SelectEditor({
 }: SelectEditorProps) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
-  const [active, setActive] = useState(0);
-  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<NoteId | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const container = usePopupContainer();
-  const nodes = useCanvasStore((s) => s.nodes);
+  // Only read while open: subscribing to every note would re-render this on every drag frame.
+  const nodes = useCanvasStore((s) => (open ? s.nodes : NO_NOTES));
 
-  const selected = value.map(String);
-  const canRemove = allowEmpty || selected.length > 1;
-  const trimmed = query.trim();
+  const canRemove = allowEmpty || value.length > 1;
+  const rows = searchNotes(nodes, query, {
+    options: field.optionIds,
+    exclude: noteId ? [noteId] : [],
+  });
 
-  const rows = useMemo((): Row[] => {
-    const options = field.optionIds.flatMap((id) => nodes.filter((n) => n.id === id));
-    if (!trimmed) return options.map((note) => ({ kind: "option", note }));
-    const search = (notes: EditorNode[], limit: number) =>
-      fuzzySearch(trimmed, notes, { key: (n) => n.data.title, threshold: 0, limit }).map(
-        (r) => r.obj,
-      );
-    const others = nodes.filter((n) => !field.optionIds.includes(n.id) && n.id !== noteId);
-    const result: Row[] = [
-      ...search(options, 50).map((note) => ({ kind: "option" as const, note })),
-      ...search(others, MAX_OTHER_MATCHES).map((note) => ({ kind: "other" as const, note })),
-    ];
-    const exists = nodes.some((n) => n.data.title.toLowerCase() === trimmed.toLowerCase());
-    return exists ? result : [...result, { kind: "create", title: trimmed }];
-  }, [field.optionIds, nodes, noteId, trimmed]);
-
-  const remove = (id: string) => onChange(selected.filter((v) => v !== id));
-  const pick = (id: string) => {
+  const remove = (id: NoteId) => onChange(value.filter((v) => v !== id));
+  const pick = (id: NoteId) => {
     setQuery("");
-    setActive(0);
     if (!field.multiple) {
       onChange([id]);
       setOpen(false);
-    } else if (selected.includes(id)) {
+    } else if (value.includes(id)) {
       if (canRemove) remove(id);
     } else {
-      onChange([...selected, id]);
+      onChange([...value, id]);
     }
   };
-  const choose = (row: Row) =>
+  const choose = (row: NoteRow) =>
     pick(row.kind === "create" ? onCreateOption(row.title) : row.note.id);
-
-  const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
-      e.preventDefault();
-      const step = e.key === "ArrowDown" ? 1 : -1;
-      setActive((i) => (rows.length === 0 ? 0 : (i + step + rows.length) % rows.length));
-    } else if (e.key === "Enter") {
-      e.preventDefault();
-      const row = rows[active];
-      if (row) choose(row);
-    } else if (e.key === "Backspace" && query === "" && selected.length > 0 && canRemove) {
-      remove(selected[selected.length - 1]!);
-    }
-  };
+  const nav = useListNavigation(rows, choose);
 
   return (
     <Popover.Root
@@ -154,8 +135,8 @@ export function SelectEditor({
         // still gets its padding.
         className="-ml-1 flex min-h-6 w-full min-w-0 flex-wrap items-center gap-1 rounded px-1 py-0.5 text-left hover:bg-gray-100"
       >
-        {selected.length > 0 ? (
-          selected.map((id) => <NotePill key={id} noteId={id} />)
+        {value.length > 0 ? (
+          value.map((id) => <NotePill key={id} noteId={id} />)
         ) : (
           <span className="text-xs text-gray-400">Empty</span>
         )}
@@ -175,7 +156,7 @@ export function SelectEditor({
             ) : (
               <>
                 <div className="flex flex-wrap items-center gap-1 border-b border-gray-100 bg-gray-50 px-2 py-1.5">
-                  {selected.map((id) => (
+                  {value.map((id) => (
                     <NotePill
                       key={id}
                       noteId={id}
@@ -185,65 +166,56 @@ export function SelectEditor({
                   <input
                     ref={inputRef}
                     aria-label={`Search or create ${field.name}`}
-                    placeholder={selected.length ? "" : "Search or create a note…"}
+                    placeholder={value.length ? "" : "Search or create a note…"}
                     value={query}
                     onChange={(e) => {
                       setQuery(e.target.value);
-                      setActive(0);
+                      nav.reset();
                     }}
-                    onKeyDown={handleKeyDown}
+                    onKeyDown={(e) => {
+                      if (e.key === "Backspace" && query === "" && value.length > 0 && canRemove) {
+                        remove(value[value.length - 1]!);
+                      } else {
+                        nav.onKeyDown(e);
+                      }
+                    }}
                     className="h-6 min-w-16 flex-1 bg-transparent text-xs outline-none"
                   />
                 </div>
-                <ul className="max-h-64 overflow-y-auto p-1">
-                  {rows.map((row, i) => {
-                    const firstOther = row.kind === "other" && rows[i - 1]?.kind !== "other";
-                    return (
-                      <li key={row.kind === "create" ? "create" : row.note.id}>
-                        {firstOther && (
-                          <p className="px-2 pt-1.5 pb-1 text-xs text-gray-500">Other notes</p>
+                <ResultList
+                  items={rows}
+                  getKey={rowKey}
+                  getGroup={(row) => (row.kind === "note" ? row.group : undefined)}
+                  active={nav.active}
+                  setActive={nav.setActive}
+                  className="max-h-64 overflow-y-auto p-1"
+                  empty="No options yet. Type to find or create a note."
+                  renderItem={(row) => (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => choose(row)}
+                        className="flex min-w-0 flex-1 items-center gap-1.5 px-2 py-1 text-left text-xs text-gray-600"
+                      >
+                        {row.kind === "create" ? (
+                          <CreateRow title={row.title} />
+                        ) : (
+                          <NotePill noteId={row.note.id} />
                         )}
-                        <div
-                          aria-current={active === i}
-                          className="group flex items-center gap-1 rounded px-2 py-1 aria-current:bg-gray-100"
+                      </button>
+                      {row.kind === "note" && field.optionIds.includes(row.note.id) && (
+                        <button
+                          type="button"
+                          aria-label={`Edit ${row.note.data.title}`}
+                          onClick={() => setEditingId(row.note.id)}
+                          className="mr-1 rounded p-0.5 text-gray-400 opacity-0 group-hover:opacity-100 group-aria-current:opacity-100 hover:bg-gray-200 hover:text-gray-700"
                         >
-                          <button
-                            type="button"
-                            onClick={() => choose(row)}
-                            onMouseEnter={() => setActive(i)}
-                            className="flex min-w-0 flex-1 items-center gap-1.5 text-left text-xs text-gray-600"
-                          >
-                            {row.kind === "create" ? (
-                              <>
-                                Create
-                                <span className="truncate rounded bg-gray-100 px-1.5 leading-5 text-gray-800">
-                                  {row.title}
-                                </span>
-                              </>
-                            ) : (
-                              <NotePill noteId={row.note.id} />
-                            )}
-                          </button>
-                          {row.kind === "option" && (
-                            <button
-                              type="button"
-                              aria-label={`Edit ${row.note.data.title}`}
-                              onClick={() => setEditingId(row.note.id)}
-                              className="rounded p-0.5 text-gray-400 opacity-0 group-hover:opacity-100 group-aria-current:opacity-100 hover:bg-gray-200 hover:text-gray-700"
-                            >
-                              <EllipsisIcon className="size-3.5" />
-                            </button>
-                          )}
-                        </div>
-                      </li>
-                    );
-                  })}
-                  {rows.length === 0 && (
-                    <li className="px-2 py-1 text-xs text-gray-400">
-                      No options yet. Type to find or create a note.
-                    </li>
+                          <EllipsisIcon className="size-3.5" />
+                        </button>
+                      )}
+                    </>
                   )}
-                </ul>
+                />
               </>
             )}
           </Popover.Popup>
@@ -273,7 +245,7 @@ function OptionEditor({
     if (trimmed && trimmed !== note.data.title) updateNodeData(noteId, { title: trimmed });
     else setTitle(note.data.title);
   };
-  const setColor = (color: OptionColor | null) => updateNodeData(noteId, { color });
+  const setColor = (color: NoteColor | null) => updateNodeData(noteId, { color });
 
   return (
     <div className="p-2">
@@ -297,7 +269,7 @@ function OptionEditor({
       />
       <p className="mt-2 mb-1 px-1 text-xs text-gray-500">Color (the note's color)</p>
       <ul>
-        {[null, ...OPTION_COLORS].map((color) => (
+        {[null, ...NOTE_COLORS].map((color) => (
           <li key={color ?? "default"}>
             <button
               type="button"
@@ -306,7 +278,7 @@ function OptionEditor({
               className="flex w-full items-center gap-2 rounded px-1 py-1 text-left text-xs capitalize hover:bg-gray-100 aria-pressed:font-medium"
             >
               <span
-                className={`size-3.5 rounded ${color ? OPTION_COLOR_CLASSES[color] : "border border-gray-300 bg-white"}`}
+                className={`size-3.5 rounded ${color ? NOTE_COLOR_CLASSES[color] : "border border-gray-300 bg-white"}`}
               />
               {color ?? "Default"}
             </button>

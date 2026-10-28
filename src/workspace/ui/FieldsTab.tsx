@@ -1,28 +1,34 @@
-import { go as fuzzySearch } from "fuzzysort";
 import { ArrowDownIcon, ArrowUpIcon, XIcon } from "lucide-react";
-import { useMemo, useState, type KeyboardEvent } from "react";
+import { useState } from "react";
 
+import { NoteSchemaMenu } from "../../components/NoteSchemaMenu.tsx";
 import { isFieldInUse, newId, useCanvasStore } from "../../store/canvas.ts";
+import { FieldIcon, FieldTypeIcon } from "../icons.tsx";
 import {
-  FIELD_TYPE_LABELS,
+  FIELD_TYPE_SPECS,
   FIELD_TYPES,
   validateField,
+  withFieldType,
   type FieldDef,
   type FieldType,
+  type NoteId,
+  type SelectFieldDef,
 } from "../model.ts";
-import { FieldIcon, FieldTypeIcon } from "../icons.tsx";
+import { rowKey, searchNotes, type NoteRow } from "../noteSearch.ts";
 import { Dropdown } from "./Dropdown.tsx";
-import { IconPicker } from "./IconPicker.tsx";
 import { FieldValueEditor } from "./FieldValueEditor.tsx";
-import { NoteSchemaMenu } from "../../components/NoteSchemaMenu.tsx";
-import { NotePill } from "./SelectEditor.tsx";
+import { IconPicker } from "./IconPicker.tsx";
+import { ResultList, useListNavigation } from "./ResultList.tsx";
+import { CreateRow, NotePill } from "./SelectEditor.tsx";
 import {
-  dangerButtonClass,
-  EditorPane,
+  DeleteButton,
+  FormErrors,
   FormRow,
-  ListPane,
+  SettingsCollection,
   textInputClass,
   useAutoSave,
+  type ItemFormProps,
+  type ListItem,
 } from "./settingsLayout.tsx";
 
 const blankField = (): FieldDef => ({
@@ -32,66 +38,28 @@ const blankField = (): FieldDef => ({
   multiple: false,
   required: false,
   defaultValue: [],
-  optionIds: [],
+});
+
+const fieldListItem = (f: FieldDef): ListItem => ({
+  id: f.id,
+  label: f.name,
+  icon: <FieldIcon field={f} className="size-4" />,
 });
 
 export function FieldsTab() {
   const fields = useCanvasStore((s) => s.fields);
-  const [selectedId, setSelectedId] = useState<string | null>(fields[0]?.id ?? null);
-  const [draft, setDraft] = useState<FieldDef | null>(fields[0] ?? null);
-
-  const select = (field: FieldDef) => {
-    setSelectedId(field.id);
-    setDraft(field);
-  };
-
   return (
-    <div className="flex min-h-0 flex-1">
-      <ListPane
-        items={fields.map((f) => ({
-          id: f.id,
-          label: f.name,
-          icon: <FieldIcon field={f} className="size-4" />,
-        }))}
-        selectedId={selectedId}
-        onSelect={(id) => select(fields.find((f) => f.id === id)!)}
-        addLabel="New field"
-        onAdd={() => {
-          setSelectedId(null);
-          setDraft(blankField());
-        }}
-      />
-      <EditorPane>
-        {draft ? (
-          <FieldForm
-            key={draft.id}
-            initial={draft}
-            isNew={!fields.some((f) => f.id === draft.id)}
-            onSaved={select}
-            onDeleted={() => {
-              setSelectedId(null);
-              setDraft(null);
-            }}
-          />
-        ) : (
-          <p className="text-sm text-gray-500">Select a field, or create a new one.</p>
-        )}
-      </EditorPane>
-    </div>
+    <SettingsCollection
+      items={fields}
+      toListItem={fieldListItem}
+      actions={[{ label: "New field", create: blankField }]}
+      Form={FieldForm}
+      emptyText="Select a field, or create a new one."
+    />
   );
 }
 
-function FieldForm({
-  initial,
-  isNew,
-  onSaved,
-  onDeleted,
-}: {
-  initial: FieldDef;
-  isNew: boolean;
-  onSaved: (field: FieldDef) => void;
-  onDeleted: () => void;
-}) {
+function FieldForm({ initial, isNew, onSaved, onDeleted }: ItemFormProps<FieldDef>) {
   const [draft, setDraft] = useState(initial);
   const schemas = useCanvasStore((s) => s.schemas);
   const nodes = useCanvasStore((s) => s.nodes);
@@ -101,15 +69,21 @@ function FieldForm({
   const inUse = !isNew && isFieldInUse(nodes, draft.id);
   const usedBy = schemas.filter((sc) => sc.fieldIds.includes(draft.id));
   const errors = validateField(draft);
-  const update = (patch: Partial<FieldDef>) => setDraft((d) => ({ ...d, ...patch }));
-  const isSelect = draft.type === "select";
+  // Name, icon, cardinality and mandatory are the same for every field type.
+  const update = (patch: Partial<Pick<FieldDef, "name" | "icon" | "multiple" | "required">>) =>
+    setDraft((d) => ({ ...d, ...patch }));
+  // The default's type follows the field's type; trimming or clearing it keeps that.
+  const updateDefault = (keep: (value: FieldDef["defaultValue"]) => typeof value) =>
+    setDraft((d) => ({ ...d, defaultValue: keep(d.defaultValue) }) as FieldDef);
 
   const handleDelete = () => {
     const notesWithValues = nodes.filter((n) => (n.data.fields[draft.id]?.length ?? 0) > 0).length;
     const message =
       `Delete the field “${draft.name}”? It will be removed from ${usedBy.length} schema(s)` +
       (notesWithValues ? ` and its values deleted from ${notesWithValues} note(s).` : ".") +
-      (draft.optionIds.length ? " Its option notes stay on the canvas." : "");
+      (draft.type === "select" && draft.optionIds.length
+        ? " Its option notes stay on the canvas."
+        : "");
     if (window.confirm(message)) {
       deleteField(draft.id);
       onDeleted();
@@ -156,28 +130,21 @@ function FieldForm({
       </FormRow>
       <FormRow
         label="Type"
-        hint={
-          draft.builtIn
-            ? "Built-in field; its type is fixed."
-            : inUse
-              ? "Notes have values for this field, so its type can't change."
-              : undefined
-        }
+        hint={inUse ? "Notes have values for this field, so its type can't change." : undefined}
       >
-        <Dropdown
+        <Dropdown<FieldType>
           label="Field type"
           value={draft.type}
-          disabled={draft.builtIn || inUse}
-          // The old default isn't meaningful for a new type.
-          onChange={(value) => update({ type: value as FieldType, defaultValue: [] })}
+          disabled={inUse}
+          onChange={(type) => setDraft((d) => withFieldType(d, type))}
           items={FIELD_TYPES.map((t) => ({
             value: t,
-            label: FIELD_TYPE_LABELS[t],
+            label: FIELD_TYPE_SPECS[t].label,
             icon: <FieldTypeIcon type={t} className="size-3.5" />,
           }))}
         />
       </FormRow>
-      {isSelect && (
+      {draft.type === "select" && (
         <FormRow
           label="Options"
           hint="Options are notes. A note's picker can also find any other note, or create one."
@@ -193,14 +160,12 @@ function FieldForm({
                 type="radio"
                 name="multiple"
                 checked={draft.multiple === multiple}
-                onChange={() =>
-                  update({
-                    multiple,
-                    defaultValue: multiple ? draft.defaultValue : draft.defaultValue.slice(0, 1),
-                  })
-                }
+                onChange={() => {
+                  update({ multiple });
+                  if (!multiple) updateDefault((v) => v.slice(0, 1));
+                }}
               />
-              {isSelect
+              {draft.type === "select"
                 ? multiple
                   ? "Multi-select"
                   : "Single-select"
@@ -216,12 +181,10 @@ function FieldForm({
           <input
             type="checkbox"
             checked={draft.required}
-            onChange={(e) =>
-              update({
-                required: e.target.checked,
-                defaultValue: e.target.checked ? draft.defaultValue : [],
-              })
-            }
+            onChange={(e) => {
+              update({ required: e.target.checked });
+              if (!e.target.checked) updateDefault((v) => v.slice(0, 0));
+            }}
           />
           Every note must have a value
         </label>
@@ -235,7 +198,7 @@ function FieldForm({
             <FieldValueEditor
               field={draft}
               value={draft.defaultValue}
-              onChange={(defaultValue) => update({ defaultValue })}
+              onChange={(value) => setDraft((d) => ({ ...d, defaultValue: value }) as FieldDef)}
               onFieldChange={setDraft}
               allowEmpty
             />
@@ -250,53 +213,41 @@ function FieldForm({
         </FormRow>
       )}
 
-      {errors.length > 0 && (
-        <ul className="text-xs text-red-600">
-          {errors.map((e) => (
-            <li key={e}>{e}</li>
-          ))}
-        </ul>
-      )}
-      {!isNew && !draft.builtIn && (
-        <div className="pt-1">
-          <button type="button" onClick={handleDelete} className={dangerButtonClass}>
-            Delete field
-          </button>
-        </div>
-      )}
+      <FormErrors errors={errors} />
+      {!isNew && <DeleteButton label="Delete field" onClick={handleDelete} />}
     </form>
   );
 }
 
+const iconButtonClass = "rounded p-1 text-gray-500 hover:bg-gray-100 disabled:opacity-30";
+
 /**
- * A select field's options in settings: the option notes in picker order, each with its color
- * (that's the note's own color, changed right away), plus adding an existing note or a new one.
+ * A select field's options in settings: the option notes in picker order, each with the note's
+ * type & color menu, plus adding an existing note or a new one.
  */
 function OptionsEditor({
   field,
   onChange,
 }: {
-  field: FieldDef;
-  onChange: (field: FieldDef) => void;
+  field: SelectFieldDef;
+  onChange: (field: SelectFieldDef) => void;
 }) {
   const createOptionNote = useCanvasStore((s) => s.createOptionNote);
 
-  const setOptionIds = (optionIds: string[]) => onChange({ ...field, optionIds });
+  const setOptionIds = (optionIds: NoteId[]) => onChange({ ...field, optionIds });
   const move = (from: number, to: number) => {
     const ids = [...field.optionIds];
     const [id] = ids.splice(from, 1);
     ids.splice(to, 0, id!);
     setOptionIds(ids);
   };
-  const add = (id: string) => setOptionIds([...field.optionIds, id]);
-  const create = (title: string) =>
-    add(createOptionNote(field.id, title, { siblingIds: field.optionIds }));
+  const add = (id: NoteId) => setOptionIds([...field.optionIds, id]);
 
   return (
     <div className="flex flex-col gap-1">
       {field.optionIds.map((id, i) => (
         <div key={id} className="flex items-center gap-1.5">
-          <OptionNoteMenu noteId={id} />
+          <NoteSchemaMenu noteId={id} />
           <div className="min-w-0 flex-1">
             <NotePill noteId={id} />
           </div>
@@ -305,7 +256,7 @@ function OptionsEditor({
             aria-label="Move up"
             disabled={i === 0}
             onClick={() => move(i, i - 1)}
-            className="rounded p-1 text-gray-500 hover:bg-gray-100 disabled:opacity-30"
+            className={iconButtonClass}
           >
             <ArrowUpIcon className="size-3.5" />
           </button>
@@ -314,7 +265,7 @@ function OptionsEditor({
             aria-label="Move down"
             disabled={i === field.optionIds.length - 1}
             onClick={() => move(i, i + 1)}
-            className="rounded p-1 text-gray-500 hover:bg-gray-100 disabled:opacity-30"
+            className={iconButtonClass}
           >
             <ArrowDownIcon className="size-3.5" />
           </button>
@@ -323,20 +274,22 @@ function OptionsEditor({
             aria-label="Remove from options"
             title="Remove from options (keeps the note)"
             onClick={() => setOptionIds(field.optionIds.filter((o) => o !== id))}
-            className="rounded p-1 text-gray-500 hover:bg-gray-100"
+            className={iconButtonClass}
           >
             <XIcon className="size-3.5" />
           </button>
         </div>
       ))}
-      <AddOptionInput exclude={field.optionIds} onPick={add} onCreate={create} />
+      <AddOptionInput
+        exclude={field.optionIds}
+        onPick={add}
+        onCreate={(title) =>
+          add(createOptionNote(field.id, title, { siblingIds: field.optionIds }))
+        }
+      />
     </div>
   );
 }
-
-const MAX_MATCHES = 8;
-
-type AddRow = { kind: "note"; id: string } | { kind: "create"; title: string };
 
 /**
  * Adds an option the way the canvas picker does: type to match existing notes (that aren't
@@ -347,48 +300,19 @@ function AddOptionInput({
   onPick,
   onCreate,
 }: {
-  exclude: string[];
-  onPick: (noteId: string) => void;
+  exclude: NoteId[];
+  onPick: (noteId: NoteId) => void;
   onCreate: (title: string) => void;
 }) {
   const [query, setQuery] = useState("");
-  const [active, setActive] = useState(0);
   const nodes = useCanvasStore((s) => s.nodes);
-  const trimmed = query.trim();
-
-  const rows = useMemo((): AddRow[] => {
-    if (!trimmed) return [];
-    const matches = fuzzySearch(
-      trimmed,
-      nodes.filter((n) => !exclude.includes(n.id)),
-      { key: (n) => n.data.title, threshold: 0, limit: MAX_MATCHES },
-    ).map((r): AddRow => ({ kind: "note", id: r.obj.id }));
-    const exists = nodes.some((n) => n.data.title.toLowerCase() === trimmed.toLowerCase());
-    return exists ? matches : [...matches, { kind: "create", title: trimmed }];
-  }, [nodes, exclude, trimmed]);
-
-  const choose = (row: AddRow) => {
-    if (row.kind === "note") onPick(row.id);
+  const rows = searchNotes(nodes, query, { exclude });
+  const choose = (row: NoteRow) => {
+    if (row.kind === "note") onPick(row.note.id);
     else onCreate(row.title);
     setQuery("");
-    setActive(0);
   };
-  const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
-      e.preventDefault();
-      const step = e.key === "ArrowDown" ? 1 : -1;
-      setActive((i) => (rows.length === 0 ? 0 : (i + step + rows.length) % rows.length));
-    } else if (e.key === "Enter") {
-      e.preventDefault();
-      const row = rows[active];
-      if (row) choose(row);
-    } else if (e.key === "Escape" && query) {
-      // Clear the search instead of closing the settings dialog.
-      e.preventDefault();
-      e.stopPropagation();
-      setQuery("");
-    }
-  };
+  const nav = useListNavigation(rows, choose);
 
   return (
     <div className="relative mt-1">
@@ -398,60 +322,44 @@ function AddOptionInput({
         value={query}
         onChange={(e) => {
           setQuery(e.target.value);
-          setActive(0);
+          nav.reset();
         }}
-        onKeyDown={handleKeyDown}
+        onKeyDown={(e) => {
+          if (e.key === "Escape" && query) {
+            // Clear the search instead of closing the settings dialog.
+            e.preventDefault();
+            e.stopPropagation();
+            setQuery("");
+          } else {
+            nav.onKeyDown(e);
+          }
+        }}
         className={`${textInputClass} h-7`}
       />
       {rows.length > 0 && (
-        <ul className="absolute top-full right-0 left-0 z-10 mt-1 max-h-56 overflow-y-auto rounded-md border border-gray-200 bg-white p-1 shadow-lg">
-          {rows.map((row, i) => (
-            <li key={row.kind === "note" ? row.id : "create"}>
-              <button
-                type="button"
-                aria-current={active === i}
-                onMouseEnter={() => setActive(i)}
-                // Keep focus in the input so typing can continue after a pick.
-                onMouseDown={(e) => e.preventDefault()}
-                onClick={() => choose(row)}
-                className="flex w-full items-center gap-1.5 rounded px-2 py-1 text-left text-xs text-gray-600 aria-current:bg-gray-100"
-              >
-                {row.kind === "note" ? (
-                  <NotePill noteId={row.id} />
-                ) : (
-                  <>
-                    Create
-                    <span className="truncate rounded bg-gray-100 px-1.5 leading-5 text-gray-800">
-                      {row.title}
-                    </span>
-                  </>
-                )}
-              </button>
-            </li>
-          ))}
-        </ul>
+        <ResultList
+          items={rows}
+          getKey={rowKey}
+          active={nav.active}
+          setActive={nav.setActive}
+          className="absolute top-full right-0 left-0 z-10 mt-1 max-h-56 overflow-y-auto rounded-md border border-gray-200 bg-white p-1 shadow-lg"
+          renderItem={(row) => (
+            <button
+              type="button"
+              // Keep focus in the input so typing can continue after a pick.
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => choose(row)}
+              className="flex w-full items-center gap-1.5 px-2 py-1 text-left text-xs text-gray-600"
+            >
+              {row.kind === "note" ? (
+                <NotePill noteId={row.note.id} />
+              ) : (
+                <CreateRow title={row.title} />
+              )}
+            </button>
+          )}
+        />
       )}
     </div>
-  );
-}
-
-/** The option note's type & color menu, the same one as in the note's title bar on the canvas. */
-function OptionNoteMenu({ noteId }: { noteId: string }) {
-  const schemaId = useCanvasStore(
-    (s) => s.nodes.find((n) => n.id === noteId)?.data.schemaId ?? null,
-  );
-  const color = useCanvasStore((s) => s.nodes.find((n) => n.id === noteId)?.data.color ?? null);
-  const icon = useCanvasStore((s) => s.nodes.find((n) => n.id === noteId)?.data.icon ?? null);
-  const setNoteSchema = useCanvasStore((s) => s.setNoteSchema);
-  const updateNodeData = useCanvasStore((s) => s.updateNodeData);
-  return (
-    <NoteSchemaMenu
-      schemaId={schemaId}
-      color={color}
-      icon={icon}
-      onSchemaChange={(id) => setNoteSchema(noteId, id)}
-      onColorChange={(c) => updateNodeData(noteId, { color: c })}
-      onIconChange={(i) => updateNodeData(noteId, { icon: i })}
-    />
   );
 }

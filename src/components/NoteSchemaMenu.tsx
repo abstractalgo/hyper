@@ -2,9 +2,9 @@ import { Menu } from "@base-ui/react/menu";
 import { CheckIcon, ImageIcon, RotateCcwIcon } from "lucide-react";
 import { useRef, useState } from "react";
 
-import { useCanvasStore } from "../store/canvas.ts";
+import { useCanvasStore, useNoteData } from "../store/canvas.ts";
 import { IconByName, SchemaIcon } from "../workspace/icons.tsx";
-import { OPTION_COLOR_CLASSES, OPTION_COLORS, type OptionColor } from "../workspace/model.ts";
+import { NOTE_COLOR_CLASSES, NOTE_COLORS, type NoteColor } from "../workspace/model.ts";
 import { IconPicker } from "../workspace/ui/IconPicker.tsx";
 import {
   POPUP_CLASS,
@@ -14,15 +14,7 @@ import {
   useViewportPortal,
 } from "../workspace/ui/popups.tsx";
 
-type NoteSchemaMenuProps = {
-  schemaId: string | null;
-  color: OptionColor | null;
-  /** The note's own icon (an icon reference), or null to use its type's icon. */
-  icon: string | null;
-  onSchemaChange: (schemaId: string | null) => void;
-  onColorChange: (color: OptionColor | null) => void;
-  onIconChange: (icon: string | null) => void;
-};
+type NoteSchemaMenuProps = { noteId: string };
 
 const itemClass =
   "flex cursor-pointer items-center gap-2 py-1.5 pr-3 pl-2 outline-none select-none data-highlighted:bg-gray-100";
@@ -42,17 +34,19 @@ function Checked() {
 }
 
 /**
- * The note's icon in its title bar. Opens a menu to change the note's type (schema), its own
- * icon and its color; type and color apply immediately and the menu stays open.
+ * A note's icon button (in its title bar, and next to option notes in settings). Opens a menu to
+ * change the note's type (schema), its own icon and its color; type and color apply immediately
+ * and the menu stays open.
  */
-export function NoteSchemaMenu({
-  schemaId,
-  color,
-  icon,
-  onSchemaChange,
-  onColorChange,
-  onIconChange,
-}: NoteSchemaMenuProps) {
+export function NoteSchemaMenu({ noteId }: NoteSchemaMenuProps) {
+  const schemaId = useNoteData(noteId, "schemaId") ?? null;
+  const color = useNoteData(noteId, "color") ?? null;
+  const icon = useNoteData(noteId, "icon") ?? null;
+  const setNoteSchema = useCanvasStore((s) => s.setNoteSchema);
+  const updateNodeData = useCanvasStore((s) => s.updateNodeData);
+  const onSchemaChange = (id: string | null) => setNoteSchema(noteId, id);
+  const onColorChange = (c: NoteColor | null) => updateNodeData(noteId, { color: c });
+  const onIconChange = (i: string | null) => updateNodeData(noteId, { icon: i });
   const triggerRef = useRef<HTMLButtonElement>(null);
   const [pickingIcon, setPickingIcon] = useState(false);
   const schemas = useCanvasStore((s) => s.schemas);
@@ -126,7 +120,7 @@ export function NoteSchemaMenu({
                 <Menu.RadioGroup
                   value={color ?? NONE}
                   onValueChange={(value: string) =>
-                    onColorChange(value === NONE ? null : (value as OptionColor))
+                    onColorChange(value === NONE ? null : (value as NoteColor))
                   }
                 >
                   <Menu.RadioItem value={NONE} className={itemClass}>
@@ -134,10 +128,10 @@ export function NoteSchemaMenu({
                     <span className="size-3.5 rounded border border-gray-300 bg-white" />
                     Default
                   </Menu.RadioItem>
-                  {OPTION_COLORS.map((c) => (
+                  {NOTE_COLORS.map((c) => (
                     <Menu.RadioItem key={c} value={c} className={`${itemClass} capitalize`}>
                       <Checked />
-                      <span className={`size-3.5 rounded ${OPTION_COLOR_CLASSES[c]}`} />
+                      <span className={`size-3.5 rounded ${NOTE_COLOR_CLASSES[c]}`} />
                       {c}
                     </Menu.RadioItem>
                   ))}

@@ -16,9 +16,11 @@ import {
   customIconRef,
   initialValue,
   type CustomIcon,
+  type FieldAtom,
   type FieldDef,
   type FieldValue,
-  type OptionColor,
+  type IconRef,
+  type NoteColor,
   type Schema,
 } from "../workspace/model.ts";
 
@@ -29,9 +31,9 @@ export type EditorNodeData = {
   /** Values of the schema's fields, by field ID. */
   fields: Record<string, FieldValue>;
   /** Tints the note's title bar and its mentions; unset for the default look. */
-  color?: OptionColor | null;
+  color?: NoteColor | null;
   /** The note's own icon (an icon reference, e.g. a user's avatar); unset uses its type's icon. */
-  icon?: string | null;
+  icon?: IconRef | null;
   /** Serialized Lexical editor state (JSON), or null for an empty editor. */
   content: string | null;
 };
@@ -230,15 +232,20 @@ function positionBelow(siblings: EditorNode[], nodes: EditorNode[], width: numbe
 export const OPTION_NOTE_WIDTH = 240;
 
 export const newId = () => crypto.randomUUID();
-export const newNoteId = newId;
+
+/** `items` with `item` replacing the one with its ID, or appended if there's none. */
+const upsertById = <T extends { id: string }>(items: readonly T[], item: T): T[] =>
+  items.some((i) => i.id === item.id)
+    ? items.map((i) => (i.id === item.id ? item : i))
+    : [...items, item];
 
 type NewNote = {
   title: string;
   position: XYPosition;
   schemaId?: string | null;
   fields?: Record<string, FieldValue>;
-  color?: OptionColor | null;
-  icon?: string | null;
+  color?: NoteColor | null;
+  icon?: IconRef | null;
   content?: string | null;
   id?: string;
   width?: number;
@@ -252,7 +259,7 @@ export const createNote = ({
   color = null,
   icon = null,
   content = null,
-  id = newNoteId(),
+  id = newId(),
   width = NOTE_WIDTH,
 }: NewNote): EditorNode => ({
   id,
@@ -294,22 +301,21 @@ export const useCanvasStore = create<CanvasState>()(
             return { nodes: withoutHeight(applyNodeChanges(changes, s.nodes)) };
           const mentionAnchors = { ...s.mentionAnchors };
           for (const id of removed) delete mentionAnchors[id];
-          const gone = new Set(removed);
+          const gone = new Set<FieldAtom>(removed);
           // Deleted notes disappear from select fields: their options, defaults and values.
           const fields = s.fields.map((f) =>
-            f.type === "select" &&
-            [...f.optionIds, ...f.defaultValue].some((id) => gone.has(String(id)))
+            f.type === "select" && [...f.optionIds, ...f.defaultValue].some((id) => gone.has(id))
               ? {
                   ...f,
                   optionIds: f.optionIds.filter((id) => !gone.has(id)),
-                  defaultValue: f.defaultValue.filter((id) => !gone.has(String(id))),
+                  defaultValue: f.defaultValue.filter((id) => !gone.has(id)),
                 }
               : f,
           );
           const selectIds = new Set(fields.filter((f) => f.type === "select").map((f) => f.id));
           const nodes = withoutHeight(applyNodeChanges(changes, s.nodes)).map((n) => {
             const touched = Object.keys(n.data.fields).filter(
-              (id) => selectIds.has(id) && n.data.fields[id]!.some((v) => gone.has(String(v))),
+              (id) => selectIds.has(id) && n.data.fields[id]!.some((v) => gone.has(v)),
             );
             if (touched.length === 0) return n;
             const values = { ...n.data.fields };
@@ -317,7 +323,7 @@ export const useCanvasStore = create<CanvasState>()(
               const field = fields.find((f) => f.id === id)!;
               values[id] = conformValue(
                 field,
-                values[id]!.filter((v) => !gone.has(String(v))),
+                values[id]!.filter((v) => !gone.has(v)),
               );
             }
             return { ...n, data: { ...n.data, fields: values } };
@@ -348,7 +354,7 @@ export const useCanvasStore = create<CanvasState>()(
       createOptionNote: (fieldId, title, place = {}) => {
         const { nodes, fields } = get();
         const field = fields.find((f) => f.id === fieldId);
-        const siblingIds = place.siblingIds ?? field?.optionIds ?? [];
+        const siblingIds = place.siblingIds ?? (field?.type === "select" ? field.optionIds : []);
         const siblings = nodes.filter((n) => siblingIds.includes(n.id));
         const near = nodes.find((n) => n.id === place.nearNoteId);
         const position =
@@ -361,7 +367,9 @@ export const useCanvasStore = create<CanvasState>()(
         set({
           nodes: [...nodes, note],
           fields: fields.map((f) =>
-            f.id === fieldId ? { ...f, optionIds: [...f.optionIds, note.id] } : f,
+            f.id === fieldId && f.type === "select"
+              ? { ...f, optionIds: [...f.optionIds, note.id] }
+              : f,
           ),
         });
         return note.id;
@@ -432,11 +440,8 @@ export const useCanvasStore = create<CanvasState>()(
         }),
       saveField: (field) =>
         set((s) => {
-          const exists = s.fields.some((f) => f.id === field.id);
           return {
-            fields: exists
-              ? s.fields.map((f) => (f.id === field.id ? field : f))
-              : [...s.fields, field],
+            fields: upsertById(s.fields, field),
             nodes: s.nodes.map((n) =>
               field.id in n.data.fields
                 ? {
@@ -455,7 +460,7 @@ export const useCanvasStore = create<CanvasState>()(
         }),
       deleteField: (fieldId) =>
         set((s) => ({
-          fields: s.fields.filter((f) => f.id !== fieldId || f.builtIn),
+          fields: s.fields.filter((f) => f.id !== fieldId),
           schemas: s.schemas.map((sc) =>
             sc.fieldIds.includes(fieldId)
               ? { ...sc, fieldIds: sc.fieldIds.filter((id) => id !== fieldId) }
@@ -469,11 +474,8 @@ export const useCanvasStore = create<CanvasState>()(
         })),
       saveSchema: (schema) =>
         set((s) => {
-          const exists = s.schemas.some((sc) => sc.id === schema.id);
           return {
-            schemas: exists
-              ? s.schemas.map((sc) => (sc.id === schema.id ? schema : sc))
-              : [...s.schemas, schema],
+            schemas: upsertById(s.schemas, schema),
             nodes: s.nodes.map((n) =>
               n.data.schemaId === schema.id
                 ? { ...n, data: { ...n.data, fields: fieldsFor(schema, s.fields, n.data.fields) } }
@@ -490,12 +492,7 @@ export const useCanvasStore = create<CanvasState>()(
               : n,
           ),
         })),
-      saveCustomIcon: (icon) =>
-        set((s) => ({
-          customIcons: s.customIcons.some((i) => i.id === icon.id)
-            ? s.customIcons.map((i) => (i.id === icon.id ? icon : i))
-            : [...s.customIcons, icon],
-        })),
+      saveCustomIcon: (icon) => set((s) => ({ customIcons: upsertById(s.customIcons, icon) })),
       deleteCustomIcon: (iconId) =>
         set((s) => {
           const ref = customIconRef(iconId);
@@ -503,13 +500,12 @@ export const useCanvasStore = create<CanvasState>()(
           return {
             customIcons: s.customIcons.filter((i) => i.id !== iconId),
             schemas: s.schemas.map((sc) => (sc.icon === ref ? { ...sc, icon: "file-text" } : sc)),
-            fields: s.fields.map((f) =>
-              f.icon === ref
-                ? { ...f, icon: undefined }
-                : iconFieldIds.has(f.id) && f.defaultValue.includes(ref)
-                  ? { ...f, defaultValue: f.defaultValue.filter((v) => v !== ref) }
-                  : f,
-            ),
+            fields: s.fields.map((f): FieldDef => {
+              const field = f.icon === ref ? { ...f, icon: undefined } : f;
+              return field.type === "icon" && field.defaultValue.includes(ref)
+                ? { ...field, defaultValue: field.defaultValue.filter((v) => v !== ref) }
+                : field;
+            }),
             nodes: s.nodes.map((n) => {
               const usesIt = Object.entries(n.data.fields).some(
                 ([id, v]) => iconFieldIds.has(id) && v.includes(ref),
@@ -546,3 +542,14 @@ export const useCanvasStore = create<CanvasState>()(
     },
   ),
 );
+
+/**
+ * One property of a note's data, by note ID (undefined if the note doesn't exist). Re-renders only
+ * when that property changes.
+ */
+export function useNoteData<K extends keyof EditorNodeData>(
+  noteId: string,
+  key: K,
+): EditorNodeData[K] | undefined {
+  return useCanvasStore((s) => s.nodes.find((n) => n.id === noteId)?.data[key]);
+}

@@ -3,12 +3,12 @@ import { useEffect, useRef, type MouseEvent } from "react";
 import { useGoToNote } from "../../components/useGoToNote.ts";
 import { locateMention } from "../../components/useMentionAnchors.ts";
 import { NoteIcon } from "../../workspace/icons.tsx";
-import { OPTION_COLOR_CLASSES } from "../../workspace/model.ts";
-import { useCanvasStore } from "../../store/canvas.ts";
+import { NOTE_COLOR_CLASSES } from "../../workspace/model.ts";
+import { useCanvasStore, useNoteData } from "../../store/canvas.ts";
 
 export function NoteMention({ noteId }: { noteId: string }) {
-  const title = useCanvasStore((s) => s.nodes.find((n) => n.id === noteId)?.data.title);
-  const color = useCanvasStore((s) => s.nodes.find((n) => n.id === noteId)?.data.color);
+  const title = useNoteData(noteId, "title");
+  const color = useNoteData(noteId, "color");
   const goToNote = useGoToNote();
   const setHoveredMention = useCanvasStore((s) => s.setHoveredMention);
   const isHovered = useRef(false);
@@ -50,7 +50,7 @@ export function NoteMention({ noteId }: { noteId: string }) {
     <button
       type="button"
       className={
-        color ? `rte-mention rte-mention-colored ${OPTION_COLOR_CLASSES[color]}` : "rte-mention"
+        color ? `rte-mention rte-mention-colored ${NOTE_COLOR_CLASSES[color]}` : "rte-mention"
       }
       // Read by useMentionAnchors to place this mention's edge handle.
       data-mention-target={noteId}

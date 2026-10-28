@@ -1,4 +1,4 @@
-export class FetchError extends Error {
+class FetchError extends Error {
   constructor(
     message: string,
     readonly status: number,

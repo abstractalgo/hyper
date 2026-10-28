@@ -3,7 +3,6 @@ import {
   DecoratorNode,
   type DOMConversionMap,
   type DOMExportOutput,
-  type LexicalNode,
   type LexicalUpdateJSON,
   type NodeKey,
   type SerializedLexicalNode,
@@ -99,8 +98,4 @@ export class NoteMentionNode extends DecoratorNode<JSX.Element> {
 
 export function $createNoteMentionNode(noteId: string): NoteMentionNode {
   return $applyNodeReplacement(new NoteMentionNode(noteId));
-}
-
-export function $isNoteMentionNode(node: LexicalNode | null | undefined): node is NoteMentionNode {
-  return node instanceof NoteMentionNode;
 }

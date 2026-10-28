@@ -3,14 +3,14 @@ import { useState, type ReactNode, type RefObject } from "react";
 
 import { useCanvasStore } from "../../store/canvas.ts";
 import { ICON_NAMES, IconByName } from "../icons.tsx";
-import { customIconRef } from "../model.ts";
+import { customIconRef, type IconRef } from "../model.ts";
 import { POPUP_CLASS, POSITIONER_CLASS, usePopupContainer } from "./popups.tsx";
 
 const MAX_RESULTS = 96;
 
 type IconPickerProps = {
   /** Called with an icon reference: a Lucide name, or `custom:<id>` for a custom icon. */
-  onPick: (icon: string) => void;
+  onPick: (icon: IconRef) => void;
   label: string;
 } & (
   | {
@@ -47,7 +47,7 @@ export function IconPicker(props: IconPickerProps) {
   const custom = customIcons.filter((icon) => !q || icon.name.includes(q));
   const lucide = (q ? ICON_NAMES.filter((n) => n.includes(q)) : ICON_NAMES).slice(0, MAX_RESULTS);
 
-  const pick = (icon: string) => {
+  const pick = (icon: IconRef) => {
     onPick(icon);
     setOpen(false);
     setQuery("");

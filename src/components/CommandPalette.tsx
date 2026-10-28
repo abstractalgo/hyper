@@ -11,10 +11,11 @@ import {
   ZoomOutIcon,
   type LucideIcon,
 } from "lucide-react";
-import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 
 import { NOTE_WIDTH, useCanvasStore } from "../store/canvas.ts";
 import { NoteIcon } from "../workspace/icons.tsx";
+import { ResultList, useListNavigation } from "../workspace/ui/ResultList.tsx";
 import { useGoToNote } from "./useGoToNote.ts";
 
 const IS_MAC = /Mac|iPhone|iPad/.test(navigator.userAgent);
@@ -38,33 +39,45 @@ type Action = { key: string; label: string; Icon: LucideIcon; hint?: string; run
  * ">" lists actions instead (create a note, open settings, delete the selection, zoom…).
  */
 export function CommandPalette() {
-  // One state, so opening always starts from an empty search (whatever opened it).
-  const [{ open, query, active }, setState] = useState({ open: false, query: "", active: 0 });
-  const setOpen = (next: boolean) =>
-    setState((s) => (next ? { open: true, query: "", active: 0 } : { ...s, open: false }));
-  const setQuery = (q: string) => setState((s) => ({ ...s, query: q, active: 0 }));
-  const setActive = (update: number | ((i: number) => number)) =>
-    setState((s) => ({ ...s, active: typeof update === "function" ? update(s.active) : update }));
-  const listRef = useRef<HTMLUListElement>(null);
-
-  const nodes = useCanvasStore((s) => s.nodes);
-  const schemas = useCanvasStore((s) => s.schemas);
-  const addNode = useCanvasStore((s) => s.addNode);
-  const setSettingsOpen = useCanvasStore((s) => s.setSettingsOpen);
-  const { screenToFlowPosition, deleteElements, fitView, zoomIn, zoomOut, zoomTo } = useReactFlow();
-  const goToNote = useGoToNote();
+  const [open, setOpen] = useState(false);
 
   useEffect(() => {
     const onKeyDown = (e: globalThis.KeyboardEvent) => {
       if (e.key.toLowerCase() === "p" && (e.metaKey || e.ctrlKey) && !e.altKey && !e.shiftKey) {
         // Overrides the browser's Print.
         e.preventDefault();
-        setState((s) => (s.open ? { ...s, open: false } : { open: true, query: "", active: 0 }));
+        setOpen((o) => !o);
       }
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, []);
+
+  return (
+    <Dialog.Root open={open} onOpenChange={setOpen}>
+      <Dialog.Portal>
+        <Dialog.Backdrop className="fixed inset-0 z-50 bg-black/20" />
+        <Dialog.Popup
+          aria-label="Command palette"
+          className="fixed top-[15vh] left-1/2 z-50 flex max-h-[60vh] w-[min(560px,calc(100vw-2rem))] -translate-x-1/2 flex-col overflow-hidden rounded-lg border border-gray-200 bg-white shadow-2xl outline-none"
+        >
+          {/* Mounted only while open, so every open starts with an empty search. */}
+          <PaletteBody onClose={() => setOpen(false)} />
+        </Dialog.Popup>
+      </Dialog.Portal>
+    </Dialog.Root>
+  );
+}
+
+/** The search box and results; its state lives only as long as the palette is open. */
+function PaletteBody({ onClose }: { onClose: () => void }) {
+  const [query, setQuery] = useState("");
+  const nodes = useCanvasStore((s) => s.nodes);
+  const schemas = useCanvasStore((s) => s.schemas);
+  const addNode = useCanvasStore((s) => s.addNode);
+  const setSettingsOpen = useCanvasStore((s) => s.setSettingsOpen);
+  const { screenToFlowPosition, deleteElements, fitView, zoomIn, zoomOut, zoomTo } = useReactFlow();
+  const goToNote = useGoToNote();
 
   const selected = nodes.filter((n) => n.selected);
   const actions: Action[] = [
@@ -157,78 +170,44 @@ export function CommandPalette() {
         run: () => goToNote(n.id),
       }));
 
-  const close = () => setOpen(false);
   const runRow = (row: Row) => {
-    close();
+    onClose();
     row.run();
   };
-
-  // Keep the highlighted row in view while moving through the list with the keyboard.
-  useEffect(() => {
-    listRef.current?.children[active]?.scrollIntoView({ block: "nearest" });
-  }, [active]);
-
-  const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
-      e.preventDefault();
-      const step = e.key === "ArrowDown" ? 1 : -1;
-      setActive((i) => (rows.length === 0 ? 0 : (i + step + rows.length) % rows.length));
-    } else if (e.key === "Enter") {
-      e.preventDefault();
-      const row = rows[active];
-      if (row) runRow(row);
-    }
-  };
+  const nav = useListNavigation(rows, runRow);
 
   return (
-    <Dialog.Root
-      open={open}
-      onOpenChange={(next) => {
-        setOpen(next);
-      }}
-    >
-      <Dialog.Portal>
-        <Dialog.Backdrop className="fixed inset-0 z-50 bg-black/20" />
-        <Dialog.Popup
-          aria-label="Command palette"
-          className="fixed top-[15vh] left-1/2 z-50 flex max-h-[60vh] w-[min(560px,calc(100vw-2rem))] -translate-x-1/2 flex-col overflow-hidden rounded-lg border border-gray-200 bg-white shadow-2xl outline-none"
-        >
-          <input
-            aria-label="Search notes, or type > for actions"
-            placeholder="Search notes…  (type > for actions)"
-            value={query}
-            onChange={(e) => {
-              setQuery(e.target.value);
-            }}
-            onKeyDown={handleKeyDown}
-            className="h-11 shrink-0 border-b border-gray-200 px-4 text-sm outline-none"
-          />
-          <ul ref={listRef} className="min-h-0 flex-1 overflow-y-auto p-1">
-            {rows.map((row, i) => (
-              <li key={row.key}>
-                <button
-                  type="button"
-                  aria-current={active === i}
-                  onMouseMove={() => setActive(i)}
-                  onClick={() => runRow(row)}
-                  className="flex w-full items-center gap-2.5 rounded px-3 py-1.5 text-left text-sm text-gray-800 aria-current:bg-gray-100"
-                >
-                  <span className="flex size-4 shrink-0 items-center justify-center">
-                    {row.icon}
-                  </span>
-                  <span className="min-w-0 flex-1 truncate">{row.text}</span>
-                  {row.hint && <span className="shrink-0 text-xs text-gray-400">{row.hint}</span>}
-                </button>
-              </li>
-            ))}
-            {rows.length === 0 && (
-              <li className="px-3 py-2 text-sm text-gray-500">
-                {actionMode ? "No matching actions." : "No matching notes."}
-              </li>
-            )}
-          </ul>
-        </Dialog.Popup>
-      </Dialog.Portal>
-    </Dialog.Root>
+    <>
+      <input
+        aria-label="Search notes, or type > for actions"
+        placeholder="Search notes…  (type > for actions)"
+        value={query}
+        onChange={(e) => {
+          setQuery(e.target.value);
+          nav.reset();
+        }}
+        onKeyDown={nav.onKeyDown}
+        className="h-11 shrink-0 border-b border-gray-200 px-4 text-sm outline-none"
+      />
+      <ResultList
+        items={rows}
+        getKey={(row) => row.key}
+        active={nav.active}
+        setActive={nav.setActive}
+        className="min-h-0 flex-1 overflow-y-auto p-1"
+        empty={actionMode ? "No matching actions." : "No matching notes."}
+        renderItem={(row) => (
+          <button
+            type="button"
+            onClick={() => runRow(row)}
+            className="flex w-full items-center gap-2.5 px-3 py-1.5 text-left text-sm text-gray-800"
+          >
+            <span className="flex size-4 shrink-0 items-center justify-center">{row.icon}</span>
+            <span className="min-w-0 flex-1 truncate">{row.text}</span>
+            {row.hint && <span className="shrink-0 text-xs text-gray-400">{row.hint}</span>}
+          </button>
+        )}
+      />
+    </>
   );
 }

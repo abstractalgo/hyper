@@ -4,19 +4,19 @@ import { Fragment, type ReactNode } from "react";
 
 import { POPUP_CLASS, POSITIONER_CLASS, usePopupContainer } from "./popups.tsx";
 
-export type DropdownItem = {
-  value: string;
+export type DropdownItem<V extends string = string> = {
+  value: V;
   label: string;
   icon?: ReactNode;
   /** Items with the same group are listed together under that heading (in first-seen order). */
   group?: string;
 };
 
-type DropdownProps = {
+type DropdownProps<V extends string> = {
   /** Selected item's value; null shows the placeholder. */
-  value: string | null;
-  onChange: (value: string) => void;
-  items: DropdownItem[];
+  value: V | null;
+  onChange: (value: V) => void;
+  items: DropdownItem<V>[];
   label: string;
   placeholder?: string;
   disabled?: boolean;
@@ -24,8 +24,8 @@ type DropdownProps = {
 };
 
 /** Groups consecutive-or-not items by their `group`, keeping the order groups first appear in. */
-function groupItems(items: DropdownItem[]) {
-  const groups: { name: string | undefined; items: DropdownItem[] }[] = [];
+function groupItems<V extends string>(items: DropdownItem<V>[]) {
+  const groups: { name: string | undefined; items: DropdownItem<V>[] }[] = [];
   for (const item of items) {
     const group = groups.find((g) => g.name === item.group);
     if (group) group.items.push(item);
@@ -35,7 +35,7 @@ function groupItems(items: DropdownItem[]) {
 }
 
 /** A styled replacement for a native `<select>` (Base UI Select), with optional icons and groups. */
-export function Dropdown({
+export function Dropdown<V extends string>({
   value,
   onChange,
   items,
@@ -43,7 +43,7 @@ export function Dropdown({
   placeholder = "Choose…",
   disabled = false,
   className = "",
-}: DropdownProps) {
+}: DropdownProps<V>) {
   const container = usePopupContainer();
   const byValue = new Map(items.map((item) => [item.value, item]));
 
@@ -60,7 +60,7 @@ export function Dropdown({
         className={`flex h-8 w-full min-w-0 items-center justify-between gap-2 rounded border border-gray-300 bg-white px-2 text-left text-sm outline-none hover:bg-gray-50 focus-visible:border-blue-500 data-disabled:cursor-not-allowed data-disabled:bg-gray-50 data-disabled:text-gray-500 ${className}`}
       >
         <Select.Value placeholder={<span className="text-gray-500">{placeholder}</span>}>
-          {(selected: string | null) => {
+          {(selected: V | null) => {
             const item = selected === null ? undefined : byValue.get(selected);
             return item ? (
               <span className="flex min-w-0 items-center gap-2">

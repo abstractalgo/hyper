@@ -1,57 +1,103 @@
-export const FIELD_TYPES = [
-  "text",
-  "number",
-  "icon",
-  "image",
-  "date",
-  "datetime",
-  "select",
-] as const;
-export type FieldType = (typeof FIELD_TYPES)[number];
+/** A note's ID. */
+export type NoteId = string;
 
-export const FIELD_TYPE_LABELS: Record<FieldType, string> = {
-  text: "Text",
-  number: "Number",
-  icon: "Icon",
-  image: "Image (URL)",
-  date: "Date",
-  datetime: "Date & time",
-  select: "Select",
+/**
+ * An icon reference: a Lucide name (e.g. `square-check-big`) or a workspace custom icon
+ * (`custom:<id>`).
+ */
+export type IconRef = string;
+
+/** What one value of each field type is. Everything per-type below is keyed by this. */
+export type FieldAtomByType = {
+  text: string;
+  number: number;
+  icon: IconRef;
+  image: string;
+  /** Local `YYYY-MM-DD`. */
+  date: string;
+  /** Local `YYYY-MM-DDTHH:mm`. */
+  datetime: string;
+  /** Selects pick notes. */
+  select: NoteId;
+};
+export type FieldType = keyof FieldAtomByType;
+
+/** One value of any field. */
+export type FieldAtom = FieldAtomByType[FieldType];
+/** A field's value on a note. Single-value fields hold at most one atom. */
+export type FieldValue = FieldAtom[];
+
+type FieldTypeSpec<T extends FieldType> = {
+  label: string;
+  /** Lucide icon of the type; also the icon of fields that don't set their own. */
+  icon: IconRef;
+  /** The native input used to type a value, or null when values are picked (icons, notes). */
+  input: "text" | "number" | "url" | "date" | "datetime-local" | null;
+  /** Parses typed input into a value, or null if it isn't valid. */
+  parse: (input: string) => FieldAtomByType[T] | null;
+  /** Whether a stored value is of this type (values are saved untyped, per note). */
+  is: (atom: FieldAtom) => atom is FieldAtomByType[T];
 };
 
-/** Each type's icon (Lucide names); also the icon of fields that don't set their own. */
-export const FIELD_TYPE_ICONS: Record<FieldType, string> = {
-  text: "type",
-  number: "hash",
-  icon: "smile",
-  image: "image",
-  date: "calendar",
-  datetime: "calendar-clock",
-  select: "list",
+const isString = (atom: FieldAtom): atom is string => typeof atom === "string";
+
+const matching =
+  (pattern: RegExp) =>
+  (s: string): string | null =>
+    pattern.test(s) ? s : null;
+
+/** Everything that differs per field type, in one place (and in this order in menus). */
+export const FIELD_TYPE_SPECS: { [T in FieldType]: FieldTypeSpec<T> } = {
+  text: { label: "Text", icon: "type", input: "text", parse: (s) => s, is: isString },
+  number: {
+    label: "Number",
+    icon: "hash",
+    input: "number",
+    parse: (s) => (Number.isFinite(Number(s)) ? Number(s) : null),
+    is: (atom): atom is number => typeof atom === "number",
+  },
+  icon: { label: "Icon", icon: "smile", input: null, parse: (s) => s, is: isString },
+  image: {
+    label: "Image (URL)",
+    icon: "image",
+    input: "url",
+    parse: matching(/^https?:\/\//i),
+    is: isString,
+  },
+  date: {
+    label: "Date",
+    icon: "calendar",
+    input: "date",
+    parse: matching(/^\d{4}-\d{2}-\d{2}$/),
+    is: isString,
+  },
+  datetime: {
+    label: "Date & time",
+    icon: "calendar-clock",
+    input: "datetime-local",
+    parse: matching(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/),
+    is: isString,
+  },
+  select: { label: "Select", icon: "list", input: null, parse: (s) => s, is: isString },
 };
+
+/** A stored value read as the given field type's values (anything else is dropped). */
+export function atomsOf<T extends FieldType>(type: T, value: FieldValue): FieldAtomByType[T][] {
+  const spec: FieldTypeSpec<T> = FIELD_TYPE_SPECS[type];
+  return value.filter(spec.is);
+}
+
+export const FIELD_TYPES = Object.keys(FIELD_TYPE_SPECS) as FieldType[];
 
 /** A field's icon: its own, or else its type's. */
 export const fieldIcon = (field: Pick<FieldDef, "icon" | "type">) =>
-  field.icon || FIELD_TYPE_ICONS[field.type];
-
-export const OPTION_COLORS = [
-  "gray",
-  "brown",
-  "orange",
-  "yellow",
-  "green",
-  "blue",
-  "purple",
-  "pink",
-  "red",
-] as const;
-export type OptionColor = (typeof OPTION_COLORS)[number];
+  field.icon || FIELD_TYPE_SPECS[field.type].icon;
 
 /**
  * Note colors (title bar, mentions, select pills): Notion's select-tag colors (light theme), as
- * literal strings so Tailwind picks them up.
+ * literal strings so Tailwind picks them up. The palette is this record's keys.
  */
-export const OPTION_COLOR_CLASSES: Record<OptionColor, string> = {
+export const NOTE_COLOR_CLASSES = {
   gray: "bg-[#E3E2E0] text-[#32302C]",
   brown: "bg-[#EEE0DA] text-[#442A1E]",
   orange: "bg-[#FADEC9] text-[#49290E]",
@@ -61,54 +107,51 @@ export const OPTION_COLOR_CLASSES: Record<OptionColor, string> = {
   purple: "bg-[#E8DEEE] text-[#412454]",
   pink: "bg-[#F5E0E9] text-[#4C2337]",
   red: "bg-[#FFE2DD] text-[#5D1715]",
-};
+} as const;
+export type NoteColor = keyof typeof NOTE_COLOR_CLASSES;
+export const NOTE_COLORS = Object.keys(NOTE_COLOR_CLASSES) as NoteColor[];
 
-/**
- * One value of a field. Numbers are numbers; everything else is a string:
- * text, a Lucide icon name, an image URL, `YYYY-MM-DD`, `YYYY-MM-DDTHH:mm`, or (for selects) a
- * note ID.
- */
-export type FieldAtom = string | number;
-
-/** A field's value on a note. Single-value fields hold at most one atom. */
-export type FieldValue = FieldAtom[];
-
-/** A workspace-level property definition, shared by every schema that includes it. */
-export type FieldDef = {
+type FieldBase = {
   id: string;
   name: string;
-  type: FieldType;
   /** Holds a list of values instead of one (for selects: multi-select instead of single-select). */
   multiple: boolean;
   /** Can't be left empty; new notes start with `defaultValue`. */
   required: boolean;
-  /** Initial value for required fields (non-empty). Optional fields start empty. */
-  defaultValue: FieldValue;
-  /** Lucide icon name; unset means the type's icon (see `fieldIcon`). */
-  icon?: string;
-  /**
-   * For `select` fields: the notes offered as options, in picker order. Any other note can still
-   * be picked by searching; notes created from the picker are added here.
-   */
-  optionIds: string[];
-  /** Built-in fields can't be deleted or retyped. */
-  builtIn?: boolean;
+  /** Unset means the type's icon (see `fieldIcon`). */
+  icon?: IconRef;
 };
 
-export const SCHEMA_COLORS = [
-  "gray",
-  "sky",
-  "red",
-  "teal",
-  "violet",
-  "amber",
-  "green",
-  "pink",
-] as const;
-export type SchemaColor = (typeof SCHEMA_COLORS)[number];
+/** Fields of one type: their default holds that type's values; selects also list their options. */
+export type FieldDefOf<T extends FieldType> = FieldBase & {
+  type: T;
+  /** Initial value for required fields (non-empty). Optional fields start empty. */
+  defaultValue: FieldAtomByType[T][];
+} & (T extends "select"
+    ? {
+        /**
+         * The notes offered as options, in picker order. Any other note can still be picked by
+         * searching; notes created from the picker are added here.
+         */
+        optionIds: NoteId[];
+      }
+    : unknown);
 
-/** Literal class names so Tailwind picks them up. */
-export const SCHEMA_COLOR_CLASSES: Record<SchemaColor, string> = {
+/** A workspace-level property definition, shared by every schema that includes it. */
+export type FieldDef = { [T in FieldType]: FieldDefOf<T> }[FieldType];
+export type SelectFieldDef = FieldDefOf<"select">;
+
+/** The same field as another type (its default no longer applies, so it's cleared). */
+export function withFieldType(field: FieldDef, type: FieldType): FieldDef {
+  const { id, name, multiple, required, icon } = field;
+  const base = { id, name, multiple, required, icon, defaultValue: [] };
+  return type === "select"
+    ? { ...base, type, optionIds: field.type === "select" ? field.optionIds : [] }
+    : ({ ...base, type } as FieldDef);
+}
+
+/** Type icon colors, as literal class names so Tailwind picks them up; the palette is the keys. */
+export const SCHEMA_COLOR_CLASSES = {
   gray: "text-gray-500",
   sky: "text-sky-600",
   red: "text-red-600",
@@ -117,14 +160,15 @@ export const SCHEMA_COLOR_CLASSES: Record<SchemaColor, string> = {
   amber: "text-amber-600",
   green: "text-green-600",
   pink: "text-pink-600",
-};
+} as const;
+export type SchemaColor = keyof typeof SCHEMA_COLOR_CLASSES;
+export const SCHEMA_COLORS = Object.keys(SCHEMA_COLOR_CLASSES) as SchemaColor[];
 
 /** A type of note: a named, ordered collection of fields. */
 export type Schema = {
   id: string;
   name: string;
-  /** Icon reference: a Lucide name (e.g. `square-check-big`) or a custom icon (`custom:<id>`). */
-  icon: string;
+  icon: IconRef;
   color: SchemaColor;
   fieldIds: string[];
   /** Built-in schemas can't be deleted. */
@@ -157,8 +201,8 @@ export type CustomIcon = {
  * name, or `custom:<id>` for a custom icon, so renaming a custom icon's slug breaks nothing.
  */
 const CUSTOM_ICON_PREFIX = "custom:";
-export const customIconRef = (id: string) => `${CUSTOM_ICON_PREFIX}${id}`;
-export const customIconId = (ref: string) =>
+export const customIconRef = (id: string): IconRef => `${CUSTOM_ICON_PREFIX}${id}`;
+export const customIconId = (ref: IconRef) =>
   ref.startsWith(CUSTOM_ICON_PREFIX) ? ref.slice(CUSTOM_ICON_PREFIX.length) : null;
 
 /** Lowercase words separated by dashes, e.g. "Ana Silva" → `ana-silva`. */
@@ -208,24 +252,10 @@ export function validateField(field: FieldDef): string[] {
   return errors;
 }
 
-/** Parses user input into an atom of the given type, or null if it isn't valid. */
+/** Parses user input into a value of the given type, or null if it isn't valid. */
 export function parseAtom(type: FieldType, input: string): FieldAtom | null {
   const s = input.trim();
-  if (!s) return null;
-  switch (type) {
-    case "number": {
-      const n = Number(s);
-      return Number.isFinite(n) ? n : null;
-    }
-    case "image":
-      return /^https?:\/\//i.test(s) ? s : null;
-    case "date":
-      return /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : null;
-    case "datetime":
-      return /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(s) ? s : null;
-    default:
-      return s;
-  }
+  return s ? FIELD_TYPE_SPECS[type].parse(s) : null;
 }
 
 const dateFormat = new Intl.DateTimeFormat(undefined, { dateStyle: "medium" });

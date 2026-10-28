@@ -116,10 +116,11 @@ No `yarn` at all? Run the pinned release directly: `node .yarn/releases/yarn-4.1
 
 Then open http://localhost:5173.
 
-| Command        | Does                                |
-| -------------- | ----------------------------------- |
-| `yarn dev`     | Start the app with hot reload       |
-| `yarn build`   | Type-check and build for production |
-| `yarn preview` | Serve the production build          |
-| `yarn lint`    | Lint with oxlint                    |
-| `yarn fmt`     | Format with oxfmt                   |
+| Command        | Does                                        |
+| -------------- | ------------------------------------------- |
+| `yarn dev`     | Start the app with hot reload               |
+| `yarn build`   | Type-check and build for production         |
+| `yarn preview` | Serve the production build                  |
+| `yarn lint`    | Lint with oxlint                            |
+| `yarn fmt`     | Format with oxfmt                           |
+| `yarn knip`    | Find unused files, exports and dependencies |

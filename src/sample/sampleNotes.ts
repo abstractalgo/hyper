@@ -16,7 +16,6 @@ import { EDITOR_NODES } from "../editor/nodes.ts";
 import {
   createNote,
   newId,
-  newNoteId,
   OPTION_NOTE_WIDTH,
   type Board,
   type EditorNode,
@@ -30,8 +29,10 @@ import {
   type CustomIcon,
   type FieldAtom,
   type FieldDef,
+  type FieldDefOf,
+  type FieldType,
   type FieldValue,
-  type OptionColor,
+  type NoteColor,
   type Schema,
 } from "../workspace/model.ts";
 
@@ -129,7 +130,7 @@ type SampleNote = {
   avatar?: string;
   title: string;
   schema: SchemaKey;
-  color?: OptionColor;
+  color?: NoteColor;
   fields?: SampleFields;
   x: number;
   y: number;
@@ -429,30 +430,29 @@ type FieldIds = Record<FieldKey, string>;
 
 /** Select options with fresh IDs (per board, so defaults and values can point at them). */
 /** Option notes per select field: plain notes with a color, in one column each, right of the board. */
-const OPTION_SPECS: Record<"status" | "severity" | "labels", [name: string, color: OptionColor][]> =
-  {
-    status: [
-      ["Backlog", "gray"],
-      ["To do", "blue"],
-      ["In progress", "yellow"],
-      ["In review", "purple"],
-      ["Done", "green"],
-    ],
-    severity: [
-      ["Low", "gray"],
-      ["Medium", "yellow"],
-      ["High", "orange"],
-      ["Critical", "red"],
-    ],
-    labels: [
-      ["backend", "blue"],
-      ["frontend", "pink"],
-      ["ocr", "brown"],
-      ["compliance", "purple"],
-      ["safari", "orange"],
-      ["uploads", "green"],
-    ],
-  };
+const OPTION_SPECS: Record<"status" | "severity" | "labels", [name: string, color: NoteColor][]> = {
+  status: [
+    ["Backlog", "gray"],
+    ["To do", "blue"],
+    ["In progress", "yellow"],
+    ["In review", "purple"],
+    ["Done", "green"],
+  ],
+  severity: [
+    ["Low", "gray"],
+    ["Medium", "yellow"],
+    ["High", "orange"],
+    ["Critical", "red"],
+  ],
+  labels: [
+    ["backend", "blue"],
+    ["frontend", "pink"],
+    ["ocr", "brown"],
+    ["compliance", "purple"],
+    ["safari", "orange"],
+    ["uploads", "green"],
+  ],
+};
 const OPTION_COLUMNS_X = 2300;
 const OPTION_STEP_Y = 100;
 
@@ -482,17 +482,14 @@ function sampleOptionNotes(): OptionNotes {
 const idsOf = (notes: Map<string, EditorNode>) => [...notes.values()].map((n) => n.id);
 
 function sampleFields(f: FieldIds, options: OptionNotes, userIds: string[]): FieldDef[] {
-  const field = (
+  // Per field type: `def` must match that type (e.g. selects list their options).
+  const field = <T extends FieldType>(
     key: FieldKey,
-    def: Pick<FieldDef, "name" | "type"> & Partial<FieldDef>,
-  ): FieldDef => ({
-    id: f[key],
-    multiple: false,
-    required: false,
-    defaultValue: [],
-    optionIds: [],
-    ...def,
-  });
+    def: Omit<FieldDefOf<T>, "id" | "multiple" | "required" | "defaultValue"> &
+      Partial<Pick<FieldDefOf<T>, "multiple" | "required" | "defaultValue">>,
+  ): FieldDef =>
+    // TypeScript can't follow a spread through the generic union; `def` was checked above.
+    ({ id: f[key], multiple: false, required: false, defaultValue: [], ...def }) as FieldDef;
   return [
     field("status", {
       name: "Status",
@@ -570,7 +567,7 @@ function sampleSchemas(f: FieldIds, s: Record<SchemaKey, string>): Schema[] {
  * notes with real Lexical editor states, mentions and references wired by ID.
  */
 export function createSampleBoard(): Board {
-  const ids = Object.fromEntries(NOTE_KEYS.map((k) => [k, newNoteId()])) as Ids;
+  const ids = Object.fromEntries(NOTE_KEYS.map((k) => [k, newId()])) as Ids;
   const fieldIds = Object.fromEntries(FIELD_KEYS.map((k) => [k, newId()])) as FieldIds;
   const schemaIds = {
     ...Object.fromEntries(SCHEMA_KEYS.map((k) => [k, newId()])),

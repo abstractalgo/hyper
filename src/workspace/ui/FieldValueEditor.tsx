@@ -163,7 +163,7 @@ function InlineAtomInput({
             e.currentTarget.blur();
           }
         }}
-        className={inputClass}
+        className={`${inputClass} ${(draft ?? current) === "" ? "text-gray-400" : ""}`}
       />
     </div>
   );

@@ -20,7 +20,7 @@ import { EditorNodeView, TITLE_HANDLE_ID } from "./EditorNode.tsx";
 const nodeTypes: NodeTypes = { editor: EditorNodeView };
 
 /** Approximate rendered height of a note's title bar, used to center new notes on the cursor. */
-const TITLE_BAR_HEIGHT = 28;
+const TITLE_BAR_HEIGHT = 34;
 
 /** `nodeId:handleId` of every source handle React Flow has measured, as one comparable string. */
 const measuredSourceHandles = (s: ReactFlowState) => {

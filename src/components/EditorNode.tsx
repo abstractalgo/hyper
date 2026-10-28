@@ -72,7 +72,7 @@ export const EditorNodeView = memo(function EditorNodeView({
             : "border-gray-200"
       }`}
     >
-      <div className="relative flex shrink-0 cursor-grab items-center gap-1.5 rounded-t-lg border-b border-gray-200 bg-gray-50 py-1 pr-3 pl-2 text-xs font-medium text-gray-600 active:cursor-grabbing">
+      <div className="relative flex shrink-0 cursor-grab items-center gap-1.5 rounded-t-lg border-b border-gray-200 bg-gray-50 py-1.5 pr-3 pl-2 text-sm font-semibold text-gray-900 active:cursor-grabbing">
         <NoteSchemaMenu schemaId={data.schemaId} onChange={handleSchemaChange} />
         <div className="min-w-0 flex-1">
           <NoteTitle title={data.title} onRename={handleRename} />

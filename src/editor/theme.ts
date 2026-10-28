@@ -12,6 +12,7 @@ export const editorTheme: EditorThemeClasses = {
     ul: "rte-ul",
     ol: "rte-ol",
     checklist: "rte-checklist",
+    listitem: "rte-listitem",
     listitemChecked: "rte-listitem-checked",
     listitemUnchecked: "rte-listitem-unchecked",
     nested: { listitem: "rte-nested-listitem" },

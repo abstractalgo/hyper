@@ -1,18 +1,42 @@
 @import "tailwindcss";
 @import "@xyflow/react/dist/style.css";
 
+/*
+ * GitHub-like type: GitHub's system font stack and a compact scale. 12px (text-xs) for secondary
+ * UI, 14px (text-sm) for body text and titles, 16px (text-base) for dialog titles; headings
+ * inside notes stay within 14–18px.
+ */
+@theme {
+  --font-sans:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif,
+    "Apple Color Emoji", "Segoe UI Emoji";
+  --font-mono:
+    ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+}
+
 html,
 body,
 #root {
   height: 100%;
 }
 
-/* Base UI: keep popups above app content, and let iOS Safari backdrops cover the viewport */
+/* Base UI wants a positioned body so iOS Safari backdrops cover the viewport */
 body {
-  position: relative;
+  @apply relative bg-white font-sans text-sm/normal text-gray-900;
 }
+/* Base UI: keep popups above app content */
 #root {
   isolation: isolate;
+}
+
+/* Native date pickers: show the calendar icon only on hover/focus, keeping property rows quiet */
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+  @apply opacity-0;
+}
+input[type="date"]:is(:hover, :focus)::-webkit-calendar-picker-indicator,
+input[type="datetime-local"]:is(:hover, :focus)::-webkit-calendar-picker-indicator {
+  @apply opacity-60;
 }
 
 /* Note handles: anchors for @mention edges, not interactive */
@@ -41,35 +65,40 @@ body {
 
 /* Lexical editor content */
 .rte-placeholder {
-  @apply pointer-events-none absolute top-2 left-3 text-sm text-gray-400 select-none;
+  @apply pointer-events-none absolute top-2 left-3 text-sm text-gray-500 select-none;
 }
 
+/* Note content follows GitHub's markdown styles, scaled down and kept compact (14px body). */
 .rte-h1 {
-  @apply mb-1 text-2xl font-bold;
+  @apply mt-4 mb-2 border-b border-gray-200 pb-1 text-lg/snug font-semibold first:mt-0;
 }
 .rte-h2 {
-  @apply mb-1 text-xl font-semibold;
+  @apply mt-4 mb-1.5 text-base/snug font-semibold first:mt-0;
 }
 .rte-h3 {
-  @apply mb-1 text-lg font-semibold;
+  @apply mt-3.5 mb-1.5 text-sm/snug font-semibold first:mt-0;
 }
 .rte-paragraph {
-  @apply mb-1;
+  @apply mb-2.5 last:mb-0;
 }
 .rte-quote {
-  @apply mb-1 border-l-4 border-gray-300 pl-3 text-gray-600 italic;
+  @apply mb-2.5 border-l-[0.25em] border-gray-200 pl-3 text-gray-500 last:mb-0;
 }
+/* Lists get a bit more room around them than paragraphs, and a little between items. */
 .rte-ul {
-  @apply mb-1 list-disc pl-5;
+  @apply my-2.5 list-disc pl-5 first:mt-0 last:mb-0;
 }
 .rte-ol {
-  @apply mb-1 list-decimal pl-5;
+  @apply my-2.5 list-decimal pl-5 first:mt-0 last:mb-0;
+}
+.rte-listitem + .rte-listitem {
+  @apply mt-1;
 }
 .rte-nested-listitem {
   @apply list-none;
 }
 .rte-checklist {
-  @apply mb-1 pl-0;
+  @apply my-2.5 pl-0 first:mt-0 last:mb-0;
 }
 /* CheckListPlugin toggles an item when its left padding (where ::before sits) is clicked */
 .rte-listitem-checked,
@@ -78,7 +107,7 @@ body {
 }
 .rte-listitem-checked::before,
 .rte-listitem-unchecked::before {
-  @apply absolute top-[0.2em] left-0 size-4 cursor-pointer rounded border border-gray-400 bg-white content-[''];
+  @apply absolute top-[0.2em] left-0 size-4 cursor-pointer rounded-[3px] border border-gray-300 bg-white content-[''];
 }
 .rte-listitem-checked {
   @apply text-gray-400 line-through;
@@ -93,21 +122,22 @@ body {
 .rte-nested-listitem::after {
   @apply hidden;
 }
+/* Like Notion's page mentions: body-colored text with a faint underline, not a colored chip */
 .rte-mention {
-  @apply cursor-pointer rounded bg-blue-50 px-1 font-medium text-blue-700 hover:bg-blue-100;
+  @apply cursor-pointer rounded-sm px-0.5 font-medium text-gray-900 underline decoration-gray-300 decoration-1 underline-offset-[3px] hover:bg-gray-100 hover:decoration-gray-500;
 }
 /* Inline (not flex) so long mentions still wrap with the surrounding text */
 .rte-mention-icon {
   @apply mr-1 inline-block size-[1em] align-[-0.125em];
 }
 .rte-mention-missing {
-  @apply cursor-default bg-gray-100 text-gray-400 line-through hover:bg-gray-100;
+  @apply cursor-default text-gray-400 line-through hover:bg-transparent;
 }
 .rte-link {
-  @apply text-blue-600 underline;
+  @apply text-blue-600 underline underline-offset-2;
 }
 .rte-bold {
-  @apply font-bold;
+  @apply font-semibold;
 }
 .rte-italic {
   @apply italic;
@@ -122,5 +152,5 @@ body {
   text-decoration: underline line-through;
 }
 .rte-code {
-  @apply rounded bg-gray-100 px-1 font-mono text-[0.85em];
+  @apply rounded-md bg-gray-500/12 px-[0.4em] py-[0.2em] font-mono text-[85%];
 }

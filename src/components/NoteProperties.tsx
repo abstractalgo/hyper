@@ -31,7 +31,7 @@ export function NoteProperties({ noteId }: { noteId: string }) {
       >
         {fields.map((field) => (
           <div key={field.id} className="contents">
-            <dt className="truncate text-[11px] text-gray-500" title={field.name}>
+            <dt className="truncate text-xs text-gray-500" title={field.name}>
               {field.name}
             </dt>
             <dd className="min-w-0">

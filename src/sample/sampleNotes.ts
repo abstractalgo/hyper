@@ -133,7 +133,7 @@ const avatarUrl = (name: string) =>
 
 const SAMPLE: Record<NoteKey, SampleNote> = {
   epic: {
-    title: "EXP-1 · Expense submission",
+    title: "Expense submission (EXP-1)",
     schema: "epic",
     fields: { status: ["In progress"], assignee: [ref("ana")], target: ["2027-03-31"] },
     x: 0,
@@ -158,7 +158,7 @@ const SAMPLE: Record<NoteKey, SampleNote> = {
     ],
   },
   sso: {
-    title: "EXP-2 · SSO login",
+    title: "SSO login (EXP-2)",
     schema: "task",
     fields: { status: ["Done"], assignee: [ref("marcus")], points: [3], labels: ["backend"] },
     x: 560,
@@ -188,7 +188,7 @@ const SAMPLE: Record<NoteKey, SampleNote> = {
     ],
   },
   receipts: {
-    title: "EXP-3 · Receipt upload & OCR",
+    title: "Receipt upload & OCR (EXP-3)",
     schema: "task",
     fields: {
       status: ["In review"],
@@ -226,7 +226,7 @@ const SAMPLE: Record<NoteKey, SampleNote> = {
     ],
   },
   approvals: {
-    title: "EXP-4 · Manager approval flow",
+    title: "Manager approval flow (EXP-4)",
     schema: "task",
     fields: { status: ["To do"], assignee: [ref("ana")], points: [5], due: ["2026-11-28"] },
     x: 1120,
@@ -261,7 +261,7 @@ const SAMPLE: Record<NoteKey, SampleNote> = {
     ],
   },
   notify: {
-    title: "EXP-5 · Email & Slack notifications",
+    title: "Email & Slack notifications (EXP-5)",
     schema: "task",
     fields: { status: ["To do"], points: [3], labels: ["backend"] },
     x: 1680,
@@ -287,7 +287,7 @@ const SAMPLE: Record<NoteKey, SampleNote> = {
     ],
   },
   reports: {
-    title: "EXP-6 · Spend reports",
+    title: "Spend reports (EXP-6)",
     schema: "task",
     fields: { status: ["Backlog"], points: [5] },
     x: 1680,
@@ -311,7 +311,7 @@ const SAMPLE: Record<NoteKey, SampleNote> = {
     ],
   },
   audit: {
-    title: "EXP-7 · Audit log",
+    title: "Audit log (EXP-7)",
     schema: "task",
     fields: { status: ["To do"], assignee: [ref("marcus")], labels: ["compliance"] },
     x: 1120,
@@ -335,7 +335,7 @@ const SAMPLE: Record<NoteKey, SampleNote> = {
     ],
   },
   ocrSpike: {
-    title: "EXP-8 · Evaluate OCR vendors",
+    title: "Evaluate OCR vendors (EXP-8)",
     schema: "spike",
     fields: { status: ["In progress"], assignee: [ref("priya")], timebox: [3] },
     x: 0,
@@ -357,7 +357,7 @@ const SAMPLE: Record<NoteKey, SampleNote> = {
     ],
   },
   heicBug: {
-    title: "EXP-9 · HEIC uploads fail on Safari",
+    title: "HEIC uploads fail on Safari (EXP-9)",
     schema: "bug",
     fields: {
       status: ["To do"],

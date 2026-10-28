@@ -42,7 +42,7 @@ export function NoteTitle({ title, onRename }: NoteTitleProps) {
       onChange={(e) => setDraft(e.target.value)}
       onBlur={commit}
       onKeyDown={handleKeyDown}
-      className="nodrag w-full rounded border border-blue-400 bg-white px-1 text-xs font-medium text-gray-800 outline-none"
+      className="nodrag w-full rounded border border-blue-400 bg-white px-1 text-sm font-semibold text-gray-900 outline-none"
     />
   );
 }

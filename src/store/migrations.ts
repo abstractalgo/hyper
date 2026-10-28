@@ -97,3 +97,16 @@ export function textFieldsToSelects(board: Board): Board {
 
   return { ...board, fields, nodes };
 }
+
+const PREFIXED_TICKET = /^([A-Z][A-Z0-9]*-\d+) · (.+)$/;
+
+/** v3 → v4: "EXP-3 · Receipt upload" titles become "Receipt upload (EXP-3)". */
+export function ticketPrefixToSuffix(board: Board): Board {
+  return {
+    ...board,
+    nodes: board.nodes.map((node) => {
+      const match = PREFIXED_TICKET.exec(node.data.title);
+      return match ? { ...node, data: { ...node.data, title: `${match[2]} (${match[1]})` } } : node;
+    }),
+  };
+}

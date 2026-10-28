@@ -3,7 +3,7 @@ import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 
 import { debouncedLocalStorage } from "./debouncedStorage.ts";
-import { textFieldsToSelects } from "./migrations.ts";
+import { textFieldsToSelects, ticketPrefixToSuffix } from "./migrations.ts";
 import {
   BUILT_IN_FIELDS,
   BUILT_IN_SCHEMAS,
@@ -374,7 +374,7 @@ export const useCanvasStore = create<CanvasState>()(
     }),
     {
       name: "hyper-board",
-      version: 3,
+      version: 4,
       migrate: (persisted, version) => {
         let state = persisted as Board & { initialized: boolean };
         // v2 added select/multi-select fields, which need `options` on every field.
@@ -384,6 +384,10 @@ export const useCanvasStore = create<CanvasState>()(
         // v3: the sample's Status/Severity/Labels text fields become selects.
         if (version < 3) {
           state = { ...state, ...textFieldsToSelects(state) };
+        }
+        // v4: ticket keys moved from title prefix to suffix.
+        if (version < 4) {
+          state = { ...state, ...ticketPrefixToSuffix(state) };
         }
         return state as CanvasState;
       },

@@ -177,7 +177,7 @@ export function SelectEditor({
                     className="h-6 min-w-16 flex-1 bg-transparent text-xs outline-none"
                   />
                 </div>
-                <p className="px-3 pt-2 pb-1 text-[11px] text-gray-500">
+                <p className="px-3 pt-2 pb-1 text-xs text-gray-500">
                   Select an option or create one
                 </p>
                 <ul className="max-h-56 overflow-y-auto px-1 pb-1">
@@ -297,8 +297,8 @@ function OptionEditor({
         className="mb-1 h-7 w-full rounded border border-gray-300 px-2 text-xs outline-none focus:border-blue-500 aria-invalid:border-red-500"
         aria-invalid={duplicate || !trimmed}
       />
-      {duplicate && <p className="mb-1 text-[11px] text-red-600">Another option has this name.</p>}
-      <p className="mt-2 mb-1 px-1 text-[11px] text-gray-500">Color</p>
+      {duplicate && <p className="mb-1 text-xs text-red-600">Another option has this name.</p>}
+      <p className="mt-2 mb-1 px-1 text-xs text-gray-500">Color</p>
       <ul>
         {OPTION_COLORS.map((color) => (
           <li key={color}>

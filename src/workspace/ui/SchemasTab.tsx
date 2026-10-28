@@ -4,6 +4,7 @@ import { useState } from "react";
 import { newId, useCanvasStore } from "../../store/canvas.ts";
 import { LucideByName, SchemaIcon } from "../icons.tsx";
 import { FIELD_TYPE_LABELS, SCHEMA_COLOR_CLASSES, SCHEMA_COLORS, type Schema } from "../model.ts";
+import { Dropdown } from "./Dropdown.tsx";
 import { IconPicker } from "./IconPicker.tsx";
 import {
   dangerButtonClass,
@@ -11,7 +12,6 @@ import {
   FormRow,
   ListPane,
   primaryButtonClass,
-  selectClass,
   textInputClass,
 } from "./settingsLayout.tsx";
 
@@ -234,21 +234,17 @@ function SchemaForm({
           )}
         </ul>
         {available.length > 0 && (
-          <select
-            aria-label="Add field"
-            value=""
-            onChange={(e) =>
-              e.target.value && update({ fieldIds: [...draft.fieldIds, e.target.value] })
-            }
-            className={`${selectClass} mt-2`}
-          >
-            <option value="">Add a field…</option>
-            {available.map((f) => (
-              <option key={f.id} value={f.id}>
-                {f.name} ({FIELD_TYPE_LABELS[f.type]})
-              </option>
-            ))}
-          </select>
+          <Dropdown
+            label="Add field"
+            value={null}
+            placeholder="Add a field…"
+            onChange={(id) => update({ fieldIds: [...draft.fieldIds, id] })}
+            items={available.map((f) => ({
+              value: f.id,
+              label: `${f.name} (${FIELD_TYPE_LABELS[f.type]})`,
+            }))}
+            className="mt-2"
+          />
         )}
       </FormRow>
       {!isNew && (

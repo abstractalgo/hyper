@@ -110,3 +110,40 @@ export function ticketPrefixToSuffix(board: Board): Board {
     }),
   };
 }
+
+/** The short-lived v6 shape: options lived in "enum" schemas that enum fields pointed at. */
+type EnumEraField = Omit<FieldDef, "type" | "options"> & {
+  type: string;
+  enumId?: string | null;
+  options?: SelectOption[];
+};
+type EnumEraSchema = Board["schemas"][number] & { kind?: string; options?: SelectOption[] };
+type EnumEraBoard = Omit<Board, "fields" | "schemas"> & {
+  fields: EnumEraField[];
+  schemas: EnumEraSchema[];
+};
+
+/**
+ * v6 → v7: undo enum schemas. Each enum field becomes a select (or multi-select) field again with
+ * its own copy of the enum's options (same IDs, so values and defaults stay valid), and enum
+ * schemas are removed.
+ */
+export function enumSchemasToSelectFields(board: EnumEraBoard): Board {
+  const enums = new Map(
+    board.schemas.filter((s) => s.kind === "enum").map((s) => [s.id, s.options ?? []]),
+  );
+  const fields = board.fields.map(({ enumId, options, ...field }): FieldDef => {
+    if (field.type !== "enum") {
+      return { ...field, type: field.type as FieldDef["type"], options: options ?? [] };
+    }
+    return {
+      ...field,
+      type: field.multiple ? "multiselect" : "select",
+      options: (enumId ? enums.get(enumId) : undefined)?.map((o) => ({ ...o })) ?? [],
+    };
+  });
+  const schemas = board.schemas
+    .filter((s) => s.kind !== "enum")
+    .map(({ kind: _kind, options: _options, ...schema }) => schema);
+  return { ...board, fields, schemas };
+}

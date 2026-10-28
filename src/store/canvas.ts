@@ -3,7 +3,11 @@ import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 
 import { debouncedLocalStorage } from "./debouncedStorage.ts";
-import { textFieldsToSelects, ticketPrefixToSuffix } from "./migrations.ts";
+import {
+  enumSchemasToSelectFields,
+  textFieldsToSelects,
+  ticketPrefixToSuffix,
+} from "./migrations.ts";
 import {
   BUILT_IN_FIELDS,
   BUILT_IN_SCHEMAS,
@@ -383,7 +387,7 @@ export const useCanvasStore = create<CanvasState>()(
     }),
     {
       name: "hyper-board",
-      version: 5,
+      version: 8,
       migrate: (persisted, version) => {
         let state = persisted as Board & { initialized: boolean };
         // v2 added select/multi-select fields, which need `options` on every field.
@@ -401,6 +405,12 @@ export const useCanvasStore = create<CanvasState>()(
         // v5: notes no longer have a fixed height (no scrolling inside notes).
         if (version < 5) {
           state = { ...state, nodes: withoutHeight(state.nodes) };
+        }
+        // v6 briefly moved select options into "enum" schemas; v7/v8 move them back onto fields.
+        // Applied by content, not version: while switching back, dev-server reloads re-saved
+        // enum-shaped data labelled v5 and then v7. The conversion leaves correct data as is.
+        if (version < 8) {
+          state = { ...state, ...enumSchemasToSelectFields(state) };
         }
         return state as CanvasState;
       },

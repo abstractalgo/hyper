@@ -3,7 +3,6 @@ import type { ReactNode } from "react";
 
 export const textInputClass =
   "h-8 w-full rounded border border-gray-300 px-2 text-sm outline-none focus:border-blue-500";
-export const selectClass = `${textInputClass} bg-white disabled:bg-gray-50 disabled:text-gray-500`;
 export const primaryButtonClass =
   "h-8 rounded-md bg-gray-900 px-3 text-sm font-medium text-white hover:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-40";
 export const dangerButtonClass = "h-8 rounded-md px-3 text-sm text-red-600 hover:bg-red-50";

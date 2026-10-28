@@ -13,6 +13,8 @@ import {
   type FieldDef,
   type FieldType,
 } from "../model.ts";
+import { SchemaIcon } from "../icons.tsx";
+import { Dropdown } from "./Dropdown.tsx";
 import { FieldValueEditor } from "./FieldValueEditor.tsx";
 import {
   dangerButtonClass,
@@ -20,7 +22,6 @@ import {
   FormRow,
   ListPane,
   primaryButtonClass,
-  selectClass,
   textInputClass,
 } from "./settingsLayout.tsx";
 
@@ -151,12 +152,12 @@ function FieldForm({
               : undefined
         }
       >
-        <select
-          aria-label="Field type"
+        <Dropdown
+          label="Field type"
           value={draft.type}
           disabled={draft.builtIn || (inUse && !isSelectType(initial.type))}
-          onChange={(e) => {
-            const type = e.target.value as FieldType;
+          onChange={(value) => {
+            const type = value as FieldType;
             // Select types fix the cardinality; other defaults aren't meaningful for a new type.
             const multiple = isSelectType(type) ? type === "multiselect" : draft.multiple;
             update({
@@ -167,35 +168,27 @@ function FieldForm({
                 : [],
             });
           }}
-          className={selectClass}
-        >
-          {FIELD_TYPES.filter((t) => !inUse || compatibleTypes(initial.type, t)).map((t) => (
-            <option key={t} value={t}>
-              {FIELD_TYPE_LABELS[t]}
-            </option>
-          ))}
-        </select>
+          items={FIELD_TYPES.filter((t) => !inUse || compatibleTypes(initial.type, t)).map((t) => ({
+            value: t,
+            label: FIELD_TYPE_LABELS[t],
+          }))}
+        />
       </FormRow>
       {draft.type === "reference" && (
         <FormRow label="Refers to">
-          <select
-            aria-label="Referenced schema"
+          <Dropdown
+            label="Referenced schema"
             value={draft.referenceSchemaId ?? ""}
-            onChange={(e) =>
-              update({
-                referenceSchemaId: e.target.value || null,
-                defaultValue: [],
-              })
-            }
-            className={selectClass}
-          >
-            <option value="">Any note</option>
-            {schemas.map((sc) => (
-              <option key={sc.id} value={sc.id}>
-                {sc.name} notes
-              </option>
-            ))}
-          </select>
+            onChange={(value) => update({ referenceSchemaId: value || null, defaultValue: [] })}
+            items={[
+              { value: "", label: "Any note" },
+              ...schemas.map((sc) => ({
+                value: sc.id,
+                label: `${sc.name} notes`,
+                icon: <SchemaIcon schemaId={sc.id} className="size-3.5" />,
+              })),
+            ]}
+          />
         </FormRow>
       )}
       {isSelectType(draft.type) && (
@@ -321,18 +314,20 @@ function OptionsEditor({
     <div className="flex flex-col gap-1">
       {field.options.map((option) => (
         <div key={option.id} className="flex items-center gap-1.5">
-          <select
-            aria-label={`Color of ${option.name || "option"}`}
-            value={option.color}
-            onChange={(e) => setOption(option.id, { color: e.target.value as OptionColor })}
-            className={`h-7 w-20 rounded border-0 px-1 text-xs capitalize ${OPTION_COLOR_CLASSES[option.color]}`}
-          >
-            {OPTION_COLORS.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
-          </select>
+          {/* The dropdown fills its container; this keeps it narrow. */}
+          <div className="w-28 shrink-0">
+            <Dropdown
+              label={`Color of ${option.name || "option"}`}
+              value={option.color}
+              onChange={(color) => setOption(option.id, { color: color as OptionColor })}
+              items={OPTION_COLORS.map((c) => ({
+                value: c,
+                label: c[0]!.toUpperCase() + c.slice(1),
+                icon: <span className={`size-3.5 shrink-0 rounded ${OPTION_COLOR_CLASSES[c]}`} />,
+              }))}
+              className="h-7 text-xs"
+            />
+          </div>
           <input
             aria-label="Option name"
             value={option.name}

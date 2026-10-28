@@ -80,7 +80,7 @@ start with.
 
 ### Design your own workspace
 
-Open **Workspace settings** (the gear, top right) to:
+Open **Workspace settings** (the gear, top right, or `Cmd+,` / `Ctrl+,`) to:
 
 - **Create fields** once and reuse them across types. Rename a field and it changes everywhere.
 - **Create types** (schemas) with a name, an icon, a color, and an ordered set of fields.

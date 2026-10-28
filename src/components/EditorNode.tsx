@@ -131,8 +131,10 @@ export const EditorNodeView = memo(function EditorNodeView({
         ))}
       </div>
       <NoteProperties noteId={id} />
-      {/* nodrag: selecting text shouldn't drag the note. No overflow: notes grow with content. */}
-      <div ref={contentRef} className="nodrag cursor-text">
+      {/* nodrag: selecting text shouldn't drag the note. nokey: React Flow ignores keys typed here
+          (it only skips contenteditable elements themselves, and a focused todo item isn't one, so
+          arrows would move the note). No overflow: notes grow with content. */}
+      <div ref={contentRef} className="nodrag nokey cursor-text">
         <RichTextEditor noteId={id} initialContent={data.content} onChange={handleChange} />
       </div>
       {anchors.map((anchor, i) => (

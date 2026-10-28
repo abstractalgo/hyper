@@ -135,12 +135,16 @@ input:is([type="date"], [type="datetime-local"])[data-empty]:not(
 .rte-mention {
   @apply cursor-pointer rounded-sm px-0.5 font-medium text-gray-900 underline decoration-gray-300 decoration-1 underline-offset-[3px];
 }
-.rte-mention:not(.rte-mention-colored):hover {
+/* Hovered, or selected as a whole (the caret on it): the same look */
+.rte-mention:not(.rte-mention-colored):is(:hover, .rte-mention-selected) {
   @apply bg-gray-100 decoration-gray-500;
 }
 /* Mentions of a colored note take its color as background (and tinted text) instead */
 .rte-mention-colored {
-  @apply px-1 no-underline hover:brightness-95;
+  @apply px-1 no-underline;
+}
+.rte-mention-colored:is(:hover, .rte-mention-selected) {
+  @apply brightness-95;
 }
 /* Inline (not flex) so long mentions still wrap with the surrounding text */
 .rte-mention-icon {

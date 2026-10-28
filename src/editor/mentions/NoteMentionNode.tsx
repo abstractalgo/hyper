@@ -92,7 +92,7 @@ export class NoteMentionNode extends DecoratorNode<JSX.Element> {
   }
 
   decorate(): JSX.Element {
-    return <NoteMention noteId={this.getNoteId()} />;
+    return <NoteMention noteId={this.getNoteId()} nodeKey={this.__key} />;
   }
 }
 

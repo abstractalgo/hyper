@@ -8,7 +8,7 @@ type system with nodes (references)
 structural vs nominal vs templates
   inline rendering of properties
   are icons per schema type, or per node. are they a field or something different?
-  utility types (pick, omit)
-  collections (filters)
+  utility types (pick, omit, union, intersect)
+  collections (filters), schemas/types are filters/collections
 links have properties
 ref nodes and transclusion

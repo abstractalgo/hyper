@@ -1,10 +1,10 @@
 import { useEffect, useRef, type MouseEvent } from "react";
 
-import { useGoToNote } from "../../components/useGoToNote.ts";
-import { locateMention } from "../../components/useMentionAnchors.ts";
-import { NoteIcon } from "../../workspace/icons.tsx";
-import { NOTE_COLOR_CLASSES } from "../../workspace/model.ts";
-import { useCanvasStore, useNoteData } from "../../store/canvas.ts";
+import { useGoToNote } from "../../components/useGoToNote";
+import { locateMention } from "../../components/useMentionAnchors";
+import { NoteIcon } from "../../workspace/icons";
+import { NOTE_COLOR_CLASSES } from "../../workspace/model";
+import { useCanvasStore, useNoteData } from "../../store/canvas";
 
 export function NoteMention({ noteId }: { noteId: string }) {
   const title = useNoteData(noteId, "title");

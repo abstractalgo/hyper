@@ -14,11 +14,11 @@ import { TabIndentationPlugin } from "@lexical/react/LexicalTabIndentationPlugin
 import type { EditorState } from "lexical";
 import { useState } from "react";
 
-import { MARKDOWN_TRANSFORMERS } from "./markdown.ts";
-import { MentionsPlugin } from "./mentions/MentionsPlugin.tsx";
-import { EDITOR_NODES } from "./nodes.ts";
-import { editorTheme } from "./theme.ts";
-import { AUTO_LINK_MATCHERS, isSafeUrl } from "./url.ts";
+import { MARKDOWN_TRANSFORMERS } from "./markdown";
+import { MentionsPlugin } from "./mentions/MentionsPlugin";
+import { EDITOR_NODES } from "./nodes";
+import { editorTheme } from "./theme";
+import { AUTO_LINK_MATCHERS, isSafeUrl } from "./url";
 
 type RichTextEditorProps = {
   /** ID of the note this editor belongs to. */

@@ -11,15 +11,9 @@ import {
   type TextFormatType,
 } from "lexical";
 
-import { $createNoteMentionNode } from "../editor/mentions/NoteMentionNode.tsx";
-import { EDITOR_NODES } from "../editor/nodes.ts";
-import {
-  createNote,
-  newId,
-  OPTION_NOTE_WIDTH,
-  type Board,
-  type EditorNode,
-} from "../store/canvas.ts";
+import { $createNoteMentionNode } from "../editor/mentions/NoteMentionNode";
+import { EDITOR_NODES } from "../editor/nodes";
+import { createNote, newId, OPTION_NOTE_WIDTH, type Board, type EditorNode } from "../store/canvas";
 import {
   BUILT_IN_SCHEMAS,
   initialValue,
@@ -34,7 +28,7 @@ import {
   type FieldValue,
   type NoteColor,
   type Schema,
-} from "../workspace/model.ts";
+} from "../workspace/model";
 
 const NOTE_KEYS = [
   "epic",

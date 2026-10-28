@@ -2,7 +2,7 @@ import { Select } from "@base-ui/react/select";
 import { CheckIcon, ChevronsUpDownIcon } from "lucide-react";
 import { Fragment, type ReactNode } from "react";
 
-import { POPUP_CLASS, POSITIONER_CLASS, usePopupContainer } from "./popups.tsx";
+import { POPUP_CLASS, POSITIONER_CLASS, usePopupContainer } from "./popups";
 
 export type DropdownItem<V extends string = string> = {
   value: V;

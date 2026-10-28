@@ -1,8 +1,8 @@
 import { useState } from "react";
 
-import { newId, useCanvasStore } from "../../store/canvas.ts";
-import { IconByName } from "../icons.tsx";
-import { customIconRef, validateCustomIcon, type CustomIcon } from "../model.ts";
+import { newId, useCanvasStore } from "../../store/canvas";
+import { IconByName } from "../icons";
+import { customIconRef, validateCustomIcon, type CustomIcon } from "../model";
 import {
   DeleteButton,
   FormErrors,
@@ -12,7 +12,7 @@ import {
   useAutoSave,
   type ItemFormProps,
   type ListItem,
-} from "./settingsLayout.tsx";
+} from "./settingsLayout";
 
 const blankIcon = (): CustomIcon => ({ id: newId(), name: "", url: "" });
 

@@ -1,7 +1,7 @@
 import { useReactFlow, useStoreApi } from "@xyflow/react";
 import { useCallback } from "react";
 
-import { useCanvasStore } from "../store/canvas.ts";
+import { useCanvasStore } from "../store/canvas";
 
 /**
  * Returns a function that pans the canvas so a note is centered (keeping the zoom level) and

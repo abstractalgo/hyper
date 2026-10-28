@@ -2,17 +2,17 @@ import { Menu } from "@base-ui/react/menu";
 import { CheckIcon, ImageIcon, RotateCcwIcon } from "lucide-react";
 import { useRef, useState } from "react";
 
-import { useCanvasStore, useNoteData } from "../store/canvas.ts";
-import { IconByName, SchemaIcon } from "../workspace/icons.tsx";
-import { NOTE_COLOR_CLASSES, NOTE_COLORS, type NoteColor } from "../workspace/model.ts";
-import { IconPicker } from "../workspace/ui/IconPicker.tsx";
+import { useCanvasStore, useNoteData } from "../store/canvas";
+import { IconByName, SchemaIcon } from "../workspace/icons";
+import { NOTE_COLOR_CLASSES, NOTE_COLORS, type NoteColor } from "../workspace/model";
+import { IconPicker } from "../workspace/ui/IconPicker";
 import {
   POPUP_CLASS,
   POSITIONER_CLASS,
   PopupContainerContext,
   usePopupContainer,
   useViewportPortal,
-} from "../workspace/ui/popups.tsx";
+} from "../workspace/ui/popups";
 
 type NoteSchemaMenuProps = { noteId: string };
 

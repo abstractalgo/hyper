@@ -1,10 +1,10 @@
 import { useShallow } from "zustand/react/shallow";
 
-import { useCanvasStore, useNoteData } from "../store/canvas.ts";
-import type { FieldDef } from "../workspace/model.ts";
-import { FieldValueEditor } from "../workspace/ui/FieldValueEditor.tsx";
-import { PopupContainerContext, useViewportPortal } from "../workspace/ui/popups.tsx";
-import { FieldIcon } from "../workspace/icons.tsx";
+import { useCanvasStore, useNoteData } from "../store/canvas";
+import type { FieldDef } from "../workspace/model";
+import { FieldValueEditor } from "../workspace/ui/FieldValueEditor";
+import { PopupContainerContext, useViewportPortal } from "../workspace/ui/popups";
+import { FieldIcon } from "../workspace/icons";
 
 /** The note's schema fields as an editable label/value list, between title bar and text. */
 export function NoteProperties({ noteId }: { noteId: string }) {

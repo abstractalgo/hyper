@@ -10,8 +10,8 @@ import {
 } from "lexical";
 import type { JSX } from "react";
 
-import { useCanvasStore } from "../../store/canvas.ts";
-import { NoteMention } from "./NoteMention.tsx";
+import { useCanvasStore } from "../../store/canvas";
+import { NoteMention } from "./NoteMention";
 
 export type SerializedNoteMentionNode = Spread<{ noteId: string }, SerializedLexicalNode>;
 

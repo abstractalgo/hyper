@@ -1,8 +1,8 @@
 import { Tabs } from "@base-ui/react/tabs";
 
-import { FieldsTab } from "./FieldsTab.tsx";
-import { IconsTab } from "./IconsTab.tsx";
-import { SchemasTab } from "./SchemasTab.tsx";
+import { FieldsTab } from "./FieldsTab";
+import { IconsTab } from "./IconsTab";
+import { SchemasTab } from "./SchemasTab";
 
 const tabClass =
   "h-9 border-b-2 border-transparent px-3 text-sm text-gray-600 hover:text-gray-900 data-active:border-gray-900 data-active:text-gray-900";

@@ -13,10 +13,10 @@ import {
 } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 
-import { NOTE_WIDTH, useCanvasStore } from "../store/canvas.ts";
-import { NoteIcon } from "../workspace/icons.tsx";
-import { ResultList, useListNavigation } from "../workspace/ui/ResultList.tsx";
-import { useGoToNote } from "./useGoToNote.ts";
+import { NOTE_WIDTH, useCanvasStore } from "../store/canvas";
+import { NoteIcon } from "../workspace/icons";
+import { ResultList, useListNavigation } from "../workspace/ui/ResultList";
+import { useGoToNote } from "./useGoToNote";
 
 const IS_MAC = /Mac|iPhone|iPad/.test(navigator.userAgent);
 const MOD = IS_MAC ? "⌘" : "Ctrl+";

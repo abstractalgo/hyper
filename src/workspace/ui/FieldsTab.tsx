@@ -1,9 +1,9 @@
 import { ArrowDownIcon, ArrowUpIcon, XIcon } from "lucide-react";
 import { useState } from "react";
 
-import { NoteSchemaMenu } from "../../components/NoteSchemaMenu.tsx";
-import { isFieldInUse, newId, useCanvasStore } from "../../store/canvas.ts";
-import { FieldIcon, FieldTypeIcon } from "../icons.tsx";
+import { NoteSchemaMenu } from "../../components/NoteSchemaMenu";
+import { isFieldInUse, newId, useCanvasStore } from "../../store/canvas";
+import { FieldIcon, FieldTypeIcon } from "../icons";
 import {
   FIELD_TYPE_SPECS,
   FIELD_TYPES,
@@ -13,13 +13,13 @@ import {
   type FieldType,
   type NoteId,
   type SelectFieldDef,
-} from "../model.ts";
-import { rowKey, searchNotes, type NoteRow } from "../noteSearch.ts";
-import { Dropdown } from "./Dropdown.tsx";
-import { FieldValueEditor } from "./FieldValueEditor.tsx";
-import { IconPicker } from "./IconPicker.tsx";
-import { ResultList, useListNavigation } from "./ResultList.tsx";
-import { CreateRow, NotePill } from "./SelectEditor.tsx";
+} from "../model";
+import { rowKey, searchNotes, type NoteRow } from "../noteSearch";
+import { Dropdown } from "./Dropdown";
+import { FieldValueEditor } from "./FieldValueEditor";
+import { IconPicker } from "./IconPicker";
+import { ResultList, useListNavigation } from "./ResultList";
+import { CreateRow, NotePill } from "./SelectEditor";
 import {
   DeleteButton,
   FormErrors,
@@ -29,7 +29,7 @@ import {
   useAutoSave,
   type ItemFormProps,
   type ListItem,
-} from "./settingsLayout.tsx";
+} from "./settingsLayout";
 
 const blankField = (): FieldDef => ({
   id: newId(),

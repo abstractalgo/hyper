@@ -8,8 +8,8 @@ import {
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 
-import { avatarsToIcons } from "./avatarsToIcons.ts";
-import { debouncedLocalStorage } from "./debouncedStorage.ts";
+import { avatarsToIcons } from "./avatarsToIcons";
+import { debouncedLocalStorage } from "./debouncedStorage";
 import {
   BUILT_IN_SCHEMAS,
   conformValue,
@@ -22,7 +22,7 @@ import {
   type IconRef,
   type NoteColor,
   type Schema,
-} from "../workspace/model.ts";
+} from "../workspace/model";
 
 export type EditorNodeData = {
   title: string;

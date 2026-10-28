@@ -1,7 +1,7 @@
 import { StickyNoteIcon } from "lucide-react";
 import { DynamicIcon, iconNames, type IconName } from "lucide-react/dynamic";
 
-import { useCanvasStore, useNoteData } from "../store/canvas.ts";
+import { useCanvasStore, useNoteData } from "../store/canvas";
 import {
   customIconId,
   FIELD_TYPE_SPECS,
@@ -9,7 +9,7 @@ import {
   SCHEMA_COLOR_CLASSES,
   type FieldDef,
   type FieldType,
-} from "./model.ts";
+} from "./model";
 
 export const ICON_NAMES: readonly IconName[] = iconNames;
 const KNOWN_ICONS = new Set<string>(iconNames);

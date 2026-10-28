@@ -10,10 +10,10 @@ import { $createTextNode, type TextNode } from "lexical";
 import { useMemo, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 
-import { useCanvasStore, type EditorNode } from "../../store/canvas.ts";
-import { NoteIcon } from "../../workspace/icons.tsx";
-import { MentionMenu } from "./MentionMenu.tsx";
-import { $createNoteMentionNode } from "./NoteMentionNode.tsx";
+import { useCanvasStore, type EditorNode } from "../../store/canvas";
+import { NoteIcon } from "../../workspace/icons";
+import { MentionMenu } from "./MentionMenu";
+import { $createNoteMentionNode } from "./NoteMentionNode";
 
 const MAX_MATCHES = 8;
 const MAX_QUERY_LENGTH = 75;

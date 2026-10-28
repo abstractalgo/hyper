@@ -1,7 +1,7 @@
 import { useStoreApi } from "@xyflow/react";
 import { useLayoutEffect, useState, type RefObject } from "react";
 
-import type { MentionAnchor } from "../store/canvas.ts";
+import type { MentionAnchor } from "../store/canvas";
 
 /** Attribute set on each rendered mention whose target note exists (see NoteMention). */
 const MENTION_TARGET_ATTR = "data-mention-target";

@@ -1,8 +1,8 @@
 import { PlusIcon, XIcon } from "lucide-react";
 import { useState, type KeyboardEvent } from "react";
 
-import { useCanvasStore } from "../../store/canvas.ts";
-import { IconByName } from "../icons.tsx";
+import { useCanvasStore } from "../../store/canvas";
+import { IconByName } from "../icons";
 import {
   atomsOf,
   FIELD_TYPE_SPECS,
@@ -12,9 +12,9 @@ import {
   type FieldDef,
   type FieldType,
   type FieldValue,
-} from "../model.ts";
-import { IconPicker } from "./IconPicker.tsx";
-import { SelectEditor } from "./SelectEditor.tsx";
+} from "../model";
+import { IconPicker } from "./IconPicker";
+import { SelectEditor } from "./SelectEditor";
 
 type FieldValueEditorProps = {
   field: FieldDef;

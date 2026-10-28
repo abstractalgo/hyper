@@ -7,13 +7,13 @@ import {
 } from "@xyflow/react";
 import { memo, useCallback, useLayoutEffect, useRef } from "react";
 
-import { RichTextEditor } from "../editor/RichTextEditor.tsx";
-import { NOTE_COLOR_CLASSES } from "../workspace/model.ts";
-import { isNoteHighlighted, useCanvasStore, type EditorNode } from "../store/canvas.ts";
-import { NoteProperties } from "./NoteProperties.tsx";
-import { NoteSchemaMenu } from "./NoteSchemaMenu.tsx";
-import { NoteTitle } from "./NoteTitle.tsx";
-import { useMentionAnchors } from "./useMentionAnchors.ts";
+import { RichTextEditor } from "../editor/RichTextEditor";
+import { NOTE_COLOR_CLASSES } from "../workspace/model";
+import { isNoteHighlighted, useCanvasStore, type EditorNode } from "../store/canvas";
+import { NoteProperties } from "./NoteProperties";
+import { NoteSchemaMenu } from "./NoteSchemaMenu";
+import { NoteTitle } from "./NoteTitle";
+import { useMentionAnchors } from "./useMentionAnchors";
 
 /** Every note receives incoming mention edges on this handle, level with its title. */
 export const TITLE_HANDLE_ID = "title";

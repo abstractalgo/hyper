@@ -1,11 +1,11 @@
 import { ArrowDownIcon, ArrowUpIcon, XIcon } from "lucide-react";
 import { useState } from "react";
 
-import { newId, useCanvasStore } from "../../store/canvas.ts";
-import { FieldIcon, IconByName, SchemaIcon } from "../icons.tsx";
-import { FIELD_TYPE_SPECS, SCHEMA_COLOR_CLASSES, SCHEMA_COLORS, type Schema } from "../model.ts";
-import { Dropdown } from "./Dropdown.tsx";
-import { IconPicker } from "./IconPicker.tsx";
+import { newId, useCanvasStore } from "../../store/canvas";
+import { FieldIcon, IconByName, SchemaIcon } from "../icons";
+import { FIELD_TYPE_SPECS, SCHEMA_COLOR_CLASSES, SCHEMA_COLORS, type Schema } from "../model";
+import { Dropdown } from "./Dropdown";
+import { IconPicker } from "./IconPicker";
 import {
   DeleteButton,
   FormErrors,
@@ -15,7 +15,7 @@ import {
   useAutoSave,
   type ItemFormProps,
   type ListItem,
-} from "./settingsLayout.tsx";
+} from "./settingsLayout";
 
 const blankSchema = (): Schema => ({
   id: newId(),

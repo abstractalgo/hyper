@@ -2,18 +2,18 @@ import { Popover } from "@base-ui/react/popover";
 import { ChevronLeftIcon, EllipsisIcon, MinusCircleIcon, XIcon } from "lucide-react";
 import { useRef, useState } from "react";
 
-import { useCanvasStore, useNoteData, type EditorNode } from "../../store/canvas.ts";
-import { rowKey, searchNotes, type NoteRow } from "../noteSearch.ts";
-import { NoteIcon } from "../icons.tsx";
+import { useCanvasStore, useNoteData, type EditorNode } from "../../store/canvas";
+import { rowKey, searchNotes, type NoteRow } from "../noteSearch";
+import { NoteIcon } from "../icons";
 import {
   NOTE_COLOR_CLASSES,
   NOTE_COLORS,
   type NoteColor,
   type NoteId,
   type SelectFieldDef,
-} from "../model.ts";
-import { POPUP_CLASS, POSITIONER_CLASS, usePopupContainer } from "./popups.tsx";
-import { ResultList, useListNavigation } from "./ResultList.tsx";
+} from "../model";
+import { POPUP_CLASS, POSITIONER_CLASS, usePopupContainer } from "./popups";
+import { ResultList, useListNavigation } from "./ResultList";
 
 /** A stable empty list for the closed picker's store selector. */
 const NO_NOTES: EditorNode[] = [];

@@ -2,11 +2,11 @@ import { Dialog } from "@base-ui/react/dialog";
 import { SettingsIcon, XIcon } from "lucide-react";
 import { lazy, Suspense, useEffect } from "react";
 
-import { useCanvasStore } from "../../store/canvas.ts";
-import { PopupContainerContext } from "./popups.tsx";
+import { useCanvasStore } from "../../store/canvas";
+import { PopupContainerContext } from "./popups";
 
 // The tabs, forms and pickers are only needed once the dialog is opened.
-const SettingsPanel = lazy(() => import("./SettingsPanel.tsx"));
+const SettingsPanel = lazy(() => import("./SettingsPanel"));
 
 /** Workspace settings: custom fields and note schemas. Opened from the canvas gear button. */
 const SHORTCUT_LABEL = /Mac|iPhone|iPad/.test(navigator.userAgent) ? "⌘," : "Ctrl+,";

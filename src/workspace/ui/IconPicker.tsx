@@ -1,10 +1,10 @@
 import { Popover } from "@base-ui/react/popover";
 import { useState, type ReactNode, type RefObject } from "react";
 
-import { useCanvasStore } from "../../store/canvas.ts";
-import { ICON_NAMES, IconByName } from "../icons.tsx";
-import { customIconRef, type IconRef } from "../model.ts";
-import { POPUP_CLASS, POSITIONER_CLASS, usePopupContainer } from "./popups.tsx";
+import { useCanvasStore } from "../../store/canvas";
+import { ICON_NAMES, IconByName } from "../icons";
+import { customIconRef, type IconRef } from "../model";
+import { POPUP_CLASS, POSITIONER_CLASS, usePopupContainer } from "./popups";
 
 const MAX_RESULTS = 96;
 

@@ -1,5 +1,5 @@
-import { customIconRef, slugify, type CustomIcon, type FieldDef } from "../workspace/model.ts";
-import type { Board } from "./canvas.ts";
+import { customIconRef, slugify, type CustomIcon, type FieldDef } from "../workspace/model";
+import type { Board } from "./canvas";
 
 /** The built-in Avatar field that custom icons replace. */
 const AVATAR_FIELD_ID = "field-avatar";

@@ -13,10 +13,10 @@ import {
 import { useMemo, useState, type MouseEvent } from "react";
 import { useShallow } from "zustand/react/shallow";
 
-import { isLinkHighlighted, NOTE_WIDTH, useCanvasStore } from "../store/canvas.ts";
-import { SettingsDialog } from "../workspace/ui/SettingsDialog.tsx";
-import { CommandPalette } from "./CommandPalette.tsx";
-import { EditorNodeView, TITLE_HANDLE_ID } from "./EditorNode.tsx";
+import { isLinkHighlighted, NOTE_WIDTH, useCanvasStore } from "../store/canvas";
+import { SettingsDialog } from "../workspace/ui/SettingsDialog";
+import { CommandPalette } from "./CommandPalette";
+import { EditorNodeView, TITLE_HANDLE_ID } from "./EditorNode";
 
 const nodeTypes: NodeTypes = { editor: EditorNodeView };
 

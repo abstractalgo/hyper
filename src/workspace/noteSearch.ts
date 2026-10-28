@@ -1,7 +1,7 @@
 import { go as fuzzySearch } from "fuzzysort";
 
-import type { EditorNode } from "../store/canvas.ts";
-import type { NoteId } from "./model.ts";
+import type { EditorNode } from "../store/canvas";
+import type { NoteId } from "./model";
 
 /** A search result: an existing note, or an offer to create one with the typed title. */
 export type NoteRow =

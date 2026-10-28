@@ -8,7 +8,13 @@ import {
 import { memo, useCallback, useLayoutEffect, useRef } from "react";
 
 import { RichTextEditor } from "../editor/RichTextEditor.tsx";
-import { isNoteHighlighted, useCanvasStore, type EditorNode } from "../store/canvas.ts";
+import {
+  isNoteHighlighted,
+  useCanvasStore,
+  type EditorNode,
+  type NoteKind,
+} from "../store/canvas.ts";
+import { NoteKindMenu } from "./NoteKindMenu.tsx";
 import { NoteTitle } from "./NoteTitle.tsx";
 import { useMentionAnchors } from "./useMentionAnchors.ts";
 
@@ -47,6 +53,10 @@ export const EditorNodeView = memo(function EditorNodeView({
     (content: string) => updateNodeData(id, { content }),
     [id, updateNodeData],
   );
+  const handleKindChange = useCallback(
+    (kind: NoteKind) => updateNodeData(id, { kind }),
+    [id, updateNodeData],
+  );
   const handleRename = useCallback(
     (title: string) => updateNodeData(id, { title }),
     [id, updateNodeData],
@@ -63,8 +73,11 @@ export const EditorNodeView = memo(function EditorNodeView({
             : "border-gray-200"
       }`}
     >
-      <div className="relative shrink-0 cursor-grab rounded-t-lg border-b border-gray-200 bg-gray-50 px-3 py-1.5 text-xs font-medium text-gray-600 active:cursor-grabbing">
-        <NoteTitle title={data.title} onRename={handleRename} />
+      <div className="relative flex shrink-0 cursor-grab items-center gap-1.5 rounded-t-lg border-b border-gray-200 bg-gray-50 py-1 pr-3 pl-2 text-xs font-medium text-gray-600 active:cursor-grabbing">
+        <NoteKindMenu kind={data.kind} onChange={handleKindChange} />
+        <div className="min-w-0 flex-1">
+          <NoteTitle title={data.title} onRename={handleRename} />
+        </div>
         <Handle
           type="target"
           id={TITLE_HANDLE_ID}

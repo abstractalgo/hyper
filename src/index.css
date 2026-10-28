@@ -96,6 +96,10 @@ body {
 .rte-mention {
   @apply cursor-pointer rounded bg-blue-50 px-1 font-medium text-blue-700 hover:bg-blue-100;
 }
+/* Inline (not flex) so long mentions still wrap with the surrounding text */
+.rte-mention-icon {
+  @apply mr-1 inline-block size-[1em] align-[-0.125em];
+}
 .rte-mention-missing {
   @apply cursor-default bg-gray-100 text-gray-400 line-through hover:bg-gray-100;
 }

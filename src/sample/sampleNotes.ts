@@ -13,9 +13,19 @@ import {
 
 import { $createNoteMentionNode } from "../editor/mentions/NoteMentionNode.tsx";
 import { EDITOR_NODES } from "../editor/nodes.ts";
-import { createNote, newNoteId, type EditorNode } from "../store/canvas.ts";
+import { createNote, newNoteId, type EditorNode, type NoteKind } from "../store/canvas.ts";
 
-const NOTE_KEYS = ["epic", "sso", "receipts", "approvals", "notify", "reports", "audit"] as const;
+const NOTE_KEYS = [
+  "epic",
+  "sso",
+  "receipts",
+  "approvals",
+  "notify",
+  "reports",
+  "audit",
+  "ocrSpike",
+  "heicBug",
+] as const;
 type NoteKey = (typeof NOTE_KEYS)[number];
 
 /** Inline content: plain text, formatted text, a link, or a mention of another sample note. */
@@ -72,12 +82,13 @@ function $block(block: Block, ids: Ids): ElementNode {
   );
 }
 
-type SampleNote = { title: string; x: number; y: number; blocks: Block[] };
+type SampleNote = { title: string; kind: NoteKind; x: number; y: number; blocks: Block[] };
 
 // A made-up project: "Ledgerly", an expense-tracking app. Each note is a feature task.
 const SAMPLE: Record<NoteKey, SampleNote> = {
   epic: {
-    title: "EXP-1 · Expense submission (epic)",
+    title: "EXP-1 · Expense submission",
+    kind: "epic",
     x: 0,
     y: 140,
     blocks: [
@@ -102,6 +113,7 @@ const SAMPLE: Record<NoteKey, SampleNote> = {
   },
   sso: {
     title: "EXP-2 · SSO login",
+    kind: "task",
     x: 560,
     y: -160,
     blocks: [
@@ -131,6 +143,7 @@ const SAMPLE: Record<NoteKey, SampleNote> = {
   },
   receipts: {
     title: "EXP-3 · Receipt upload & OCR",
+    kind: "task",
     x: 560,
     y: 300,
     blocks: [
@@ -156,10 +169,12 @@ const SAMPLE: Record<NoteKey, SampleNote> = {
         ],
       },
       { p: ["Receipt thumbnails are reused in ", at("reports"), "."] },
+      { p: [b("Known issue:"), " ", at("heicBug")] },
     ],
   },
   approvals: {
     title: "EXP-4 · Manager approval flow",
+    kind: "task",
     x: 1120,
     y: 40,
     blocks: [
@@ -193,6 +208,7 @@ const SAMPLE: Record<NoteKey, SampleNote> = {
   },
   notify: {
     title: "EXP-5 · Email & Slack notifications",
+    kind: "task",
     x: 1680,
     y: -200,
     blocks: [
@@ -217,6 +233,7 @@ const SAMPLE: Record<NoteKey, SampleNote> = {
   },
   reports: {
     title: "EXP-6 · Spend reports",
+    kind: "task",
     x: 1680,
     y: 300,
     blocks: [
@@ -239,6 +256,7 @@ const SAMPLE: Record<NoteKey, SampleNote> = {
   },
   audit: {
     title: "EXP-7 · Audit log",
+    kind: "task",
     x: 1120,
     y: 620,
     blocks: [
@@ -255,6 +273,52 @@ const SAMPLE: Record<NoteKey, SampleNote> = {
           [false, ["Log actor, action, before/after, timestamp"]],
           [false, ["Retain for 7 years"]],
           [false, ["Surface the history on the expense detail page"]],
+        ],
+      },
+    ],
+  },
+  ocrSpike: {
+    title: "EXP-8 · Evaluate OCR vendors",
+    kind: "spike",
+    x: 0,
+    y: 720,
+    blocks: [
+      { p: [b("Timebox:"), " 3 days · ", b("Feeds into:"), " ", at("receipts")] },
+      {
+        p: [
+          "Which OCR service gives the best merchant/date/total accuracy on our receipt sample set, at what cost per page?",
+        ],
+      },
+      {
+        checks: [
+          [true, ["Collect 200 real receipts (anonymized)"]],
+          [false, ["Benchmark AWS Textract, Google Document AI, Mindee"]],
+          [false, ["Write up recommendation + cost estimate"]],
+        ],
+      },
+    ],
+  },
+  heicBug: {
+    title: "EXP-9 · HEIC uploads fail on Safari",
+    kind: "bug",
+    x: 1680,
+    y: 760,
+    blocks: [
+      { p: [b("Severity:"), " High · ", b("Found in:"), " ", at("receipts")] },
+      { h: "h3", text: "Steps to reproduce" },
+      {
+        numbered: [
+          ["Open the expense form in Safari 18 on iOS"],
+          ["Attach a photo straight from the camera roll (HEIC)"],
+          ["Upload spins forever; console shows ", code("413 Payload Too Large")],
+        ],
+      },
+      {
+        p: [
+          i("Expected:"),
+          " the image is converted to JPEG client-side and uploaded. Blocks the beta of ",
+          at("epic"),
+          ".",
         ],
       },
     ],
@@ -283,6 +347,12 @@ export function createSampleNotes(): EditorNode[] {
       { discrete: true },
     );
     const content = JSON.stringify(editor.getEditorState().toJSON());
-    return createNote(note.title, { x: note.x, y: note.y }, content, ids[key]);
+    return createNote({
+      title: note.title,
+      kind: note.kind,
+      position: { x: note.x, y: note.y },
+      content,
+      id: ids[key],
+    });
   });
 }

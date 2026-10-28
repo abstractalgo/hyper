@@ -2,10 +2,12 @@ import { useReactFlow } from "@xyflow/react";
 import { useEffect, useRef, type MouseEvent } from "react";
 
 import { locateMention } from "../../components/useMentionAnchors.ts";
+import { NoteKindIcon } from "../../notes/kinds.tsx";
 import { useCanvasStore } from "../../store/canvas.ts";
 
 export function NoteMention({ noteId }: { noteId: string }) {
   const title = useCanvasStore((s) => s.nodes.find((n) => n.id === noteId)?.data.title);
+  const kind = useCanvasStore((s) => s.nodes.find((n) => n.id === noteId)?.data.kind);
   const { getInternalNode, getZoom, setCenter } = useReactFlow();
   const setHoveredMention = useCanvasStore((s) => s.setHoveredMention);
   const isHovered = useRef(false);
@@ -55,6 +57,7 @@ export function NoteMention({ noteId }: { noteId: string }) {
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
+      {kind && <NoteKindIcon kind={kind} className="rte-mention-icon" />}
       {title}
     </button>
   );

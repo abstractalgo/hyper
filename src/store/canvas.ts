@@ -1,8 +1,11 @@
 import { applyNodeChanges, type Node, type NodeChange, type XYPosition } from "@xyflow/react";
 import { create } from "zustand";
 
+export type NoteKind = "task" | "bug" | "spike" | "epic";
+
 export type EditorNodeData = {
   title: string;
+  kind: NoteKind;
   /** Serialized Lexical editor state (JSON), or null for an empty editor. */
   content: string | null;
 };
@@ -128,17 +131,26 @@ function positionBeside(source: EditorNode, nodes: EditorNode[]): XYPosition {
 
 export const newNoteId = () => crypto.randomUUID();
 
-export const createNote = (
-  title: string,
-  position: XYPosition,
-  content: string | null = null,
-  id: string = newNoteId(),
-): EditorNode => ({
+type NewNote = {
+  title: string;
+  position: XYPosition;
+  kind?: NoteKind;
+  content?: string | null;
+  id?: string;
+};
+
+export const createNote = ({
+  title,
+  position,
+  kind = "task",
+  content = null,
+  id = newNoteId(),
+}: NewNote): EditorNode => ({
   id,
   type: "editor",
   position,
   width: NOTE_WIDTH,
-  data: { title, content },
+  data: { title, kind, content },
 });
 
 export const useCanvasStore = create<CanvasState>()((set, get) => ({
@@ -160,12 +172,14 @@ export const useCanvasStore = create<CanvasState>()((set, get) => ({
       };
     }),
   addNode: (position) =>
-    set((s) => ({ nodes: [...s.nodes, createNote(`Note ${s.nodes.length + 1}`, position)] })),
+    set((s) => ({
+      nodes: [...s.nodes, createNote({ title: `Note ${s.nodes.length + 1}`, position })],
+    })),
   createNoteBeside: (sourceId, title) => {
     const { nodes } = get();
     const source = nodes.find((n) => n.id === sourceId);
     const position = source ? positionBeside(source, nodes) : { x: 0, y: 0 };
-    const note = createNote(title, position);
+    const note = createNote({ title, position });
     set({ nodes: [...nodes, note] });
     return note.id;
   },

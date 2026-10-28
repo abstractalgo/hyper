@@ -5,6 +5,10 @@ type system with nodes (references)
   hover in properties also highlights the nodes in the canvas
   ~background color is a property of a node~
   hide certain nodes (and links) from canvas
+  render links to nodes even on properties
 inline rendering of properties
 links have properties
 ref nodes (transclusion)
+Cmd+K search
+auto-save (no "Save field")
+icons for field types

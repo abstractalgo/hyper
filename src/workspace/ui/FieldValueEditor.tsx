@@ -2,17 +2,15 @@ import { PlusIcon, XIcon } from "lucide-react";
 import { useState, type KeyboardEvent } from "react";
 
 import { useCanvasStore } from "../../store/canvas.ts";
-import { LucideByName, NoteIcon } from "../icons.tsx";
+import { LucideByName } from "../icons.tsx";
 import {
   formatDateAtom,
-  isSelectType,
   parseAtom,
   type FieldAtom,
   type FieldDef,
   type FieldValue,
 } from "../model.ts";
 import { IconPicker } from "./IconPicker.tsx";
-import { NotePicker } from "./NotePicker.tsx";
 import { SelectEditor } from "./SelectEditor.tsx";
 
 type FieldValueEditorProps = {
@@ -27,8 +25,8 @@ type FieldValueEditorProps = {
    */
   allowEmpty?: boolean;
   /**
-   * Select fields can create/edit their options from the picker. Defaults to saving the field
-   * to the workspace; settings passes its draft setter instead.
+   * Select fields can change their option list from the picker (create or remove options).
+   * Defaults to saving the field to the workspace; settings passes its draft setter instead.
    */
   onFieldChange?: (field: FieldDef) => void;
 };
@@ -52,19 +50,31 @@ export function FieldValueEditor({
   onFieldChange,
 }: FieldValueEditorProps) {
   const saveField = useCanvasStore((s) => s.saveField);
+  const createOptionNote = useCanvasStore((s) => s.createOptionNote);
   const canRemove = allowEmpty || !field.required || value.length > 1;
   const add = (atom: FieldAtom) => {
     if (!value.includes(atom)) onChange(field.multiple ? [...value, atom] : [atom]);
   };
   const removeAt = (i: number) => onChange(value.filter((_, j) => j !== i));
 
-  if (isSelectType(field.type)) {
+  if (field.type === "select") {
+    const changeField = onFieldChange ?? saveField;
     return (
       <SelectEditor
         field={field}
         value={value}
         onChange={onChange}
-        onFieldChange={onFieldChange ?? saveField}
+        onOptionIdsChange={(optionIds) => changeField({ ...field, optionIds })}
+        onCreateOption={(title) => {
+          const id = createOptionNote(field.id, title, {
+            nearNoteId: noteId,
+            siblingIds: field.optionIds,
+          });
+          // The store already added it to the saved field; a settings draft needs it too.
+          if (onFieldChange) onFieldChange({ ...field, optionIds: [...field.optionIds, id] });
+          return id;
+        }}
+        noteId={noteId}
         allowEmpty={allowEmpty || !field.required}
       />
     );
@@ -97,9 +107,7 @@ export function FieldValueEditor({
           )}
         </span>
       ))}
-      {(field.multiple || value.length === 0) && (
-        <AtomAdder field={field} existing={value} noteId={noteId} onAdd={add} />
-      )}
+      {(field.multiple || value.length === 0) && <AtomAdder field={field} onAdd={add} />}
     </div>
   );
 }
@@ -171,9 +179,6 @@ function InlineAtomInput({
 
 /** Read-only rendering of one value (inside a chip). */
 function AtomView({ field, atom }: { field: FieldDef; atom: FieldAtom }) {
-  const title = useCanvasStore((s) =>
-    field.type === "reference" ? s.nodes.find((n) => n.id === atom)?.data.title : undefined,
-  );
   switch (field.type) {
     case "icon":
       return <LucideByName name={String(atom)} label={String(atom)} className="size-3.5" />;
@@ -182,32 +187,13 @@ function AtomView({ field, atom }: { field: FieldDef; atom: FieldAtom }) {
     case "date":
     case "datetime":
       return <span className="truncate">{formatDateAtom(field.type, atom)}</span>;
-    case "reference":
-      return title === undefined ? (
-        <span className="text-gray-400 line-through">deleted note</span>
-      ) : (
-        <span className="inline-flex min-w-0 items-center gap-1">
-          <NoteIcon noteId={String(atom)} className="size-3.5" />
-          <span className="truncate">{title}</span>
-        </span>
-      );
     default:
       return <span className="truncate">{String(atom)}</span>;
   }
 }
 
-/** Control for adding a value: a picker for icons/references/dates, a text box otherwise. */
-function AtomAdder({
-  field,
-  existing,
-  noteId,
-  onAdd,
-}: {
-  field: FieldDef;
-  existing: FieldValue;
-  noteId?: string;
-  onAdd: (atom: FieldAtom) => void;
-}) {
+/** Control for adding a value: a picker for icons/dates, a text box otherwise. */
+function AtomAdder({ field, onAdd }: { field: FieldDef; onAdd: (atom: FieldAtom) => void }) {
   const [draft, setDraft] = useState("");
 
   if (field.type === "icon") {
@@ -215,19 +201,6 @@ function AtomAdder({
       <IconPicker label={`Add ${field.name}`} onPick={onAdd} triggerClassName={iconButtonClass}>
         <PlusIcon className="size-3.5" />
       </IconPicker>
-    );
-  }
-  if (field.type === "reference") {
-    return (
-      <NotePicker
-        label={`Add ${field.name}`}
-        schemaId={field.referenceSchemaId}
-        exclude={[...existing.map(String), ...(noteId ? [noteId] : [])]}
-        onPick={onAdd}
-        triggerClassName={iconButtonClass}
-      >
-        <PlusIcon className="size-3.5" />
-      </NotePicker>
     );
   }
   if (field.type === "date" || field.type === "datetime") {

@@ -13,7 +13,14 @@ import {
 
 import { $createNoteMentionNode } from "../editor/mentions/NoteMentionNode.tsx";
 import { EDITOR_NODES } from "../editor/nodes.ts";
-import { createNote, newId, newNoteId, type Board } from "../store/canvas.ts";
+import {
+  createNote,
+  newId,
+  newNoteId,
+  OPTION_NOTE_WIDTH,
+  type Board,
+  type EditorNode,
+} from "../store/canvas.ts";
 import {
   AVATAR_FIELD_ID,
   BUILT_IN_FIELDS,
@@ -25,7 +32,6 @@ import {
   type FieldValue,
   type OptionColor,
   type Schema,
-  type SelectOption,
 } from "../workspace/model.ts";
 
 const NOTE_KEYS = [
@@ -419,66 +425,95 @@ const SAMPLE: Record<NoteKey, SampleNote> = {
 type FieldIds = Record<FieldKey, string>;
 
 /** Select options with fresh IDs (per board, so defaults and values can point at them). */
-const options = (...entries: [name: string, color: OptionColor][]): SelectOption[] =>
-  entries.map(([name, color]) => ({ id: newId(), name, color }));
-const idOf = (opts: SelectOption[], name: string) => opts.find((o) => o.name === name)!.id;
+/** Option notes per select field: plain notes with a color, in one column each, right of the board. */
+const OPTION_SPECS: Record<"status" | "severity" | "labels", [name: string, color: OptionColor][]> =
+  {
+    status: [
+      ["Backlog", "gray"],
+      ["To do", "blue"],
+      ["In progress", "yellow"],
+      ["In review", "purple"],
+      ["Done", "green"],
+    ],
+    severity: [
+      ["Low", "gray"],
+      ["Medium", "yellow"],
+      ["High", "orange"],
+      ["Critical", "red"],
+    ],
+    labels: [
+      ["backend", "blue"],
+      ["frontend", "pink"],
+      ["ocr", "brown"],
+      ["compliance", "purple"],
+      ["safari", "orange"],
+      ["uploads", "green"],
+    ],
+  };
+const OPTION_COLUMNS_X = 2300;
+const OPTION_STEP_Y = 100;
 
-function sampleFields(f: FieldIds, userSchemaId: string): FieldDef[] {
+type OptionNotes = Record<keyof typeof OPTION_SPECS, Map<string, EditorNode>>;
+
+function sampleOptionNotes(): OptionNotes {
+  const columns = Object.entries(OPTION_SPECS).map(([key, specs], column) => [
+    key,
+    new Map(
+      specs.map(([name, color], row) => [
+        name,
+        createNote({
+          title: name,
+          color,
+          width: OPTION_NOTE_WIDTH,
+          position: {
+            x: OPTION_COLUMNS_X + column * (OPTION_NOTE_WIDTH + 80),
+            y: -200 + row * OPTION_STEP_Y,
+          },
+        }),
+      ]),
+    ),
+  ]);
+  return Object.fromEntries(columns) as OptionNotes;
+}
+
+const idsOf = (notes: Map<string, EditorNode>) => [...notes.values()].map((n) => n.id);
+
+function sampleFields(f: FieldIds, options: OptionNotes, userIds: string[]): FieldDef[] {
   const field = (
     key: Exclude<FieldKey, "avatar">,
     def: Pick<FieldDef, "name" | "type"> & Partial<FieldDef>,
   ): FieldDef => ({
     id: f[key],
-    multiple: def.type === "multiselect",
+    multiple: false,
     required: false,
     defaultValue: [],
-    referenceSchemaId: null,
-    options: [],
+    optionIds: [],
     ...def,
   });
-  const status = options(
-    ["Backlog", "gray"],
-    ["To do", "blue"],
-    ["In progress", "yellow"],
-    ["In review", "purple"],
-    ["Done", "green"],
-  );
-  const severity = options(
-    ["Low", "gray"],
-    ["Medium", "yellow"],
-    ["High", "orange"],
-    ["Critical", "red"],
-  );
   return [
     ...BUILT_IN_FIELDS,
     field("status", {
       name: "Status",
       type: "select",
-      options: status,
+      optionIds: idsOf(options.status),
       required: true,
-      defaultValue: [idOf(status, "To do")],
+      defaultValue: [options.status.get("To do")!.id],
     }),
-    field("assignee", { name: "Assignee", type: "reference", referenceSchemaId: userSchemaId }),
+    field("assignee", { name: "Assignee", type: "select", optionIds: userIds }),
     field("points", { name: "Story points", type: "number" }),
     field("due", { name: "Due date", type: "date" }),
     field("labels", {
       name: "Labels",
-      type: "multiselect",
-      options: options(
-        ["backend", "blue"],
-        ["frontend", "pink"],
-        ["ocr", "brown"],
-        ["compliance", "purple"],
-        ["safari", "orange"],
-        ["uploads", "green"],
-      ),
+      type: "select",
+      multiple: true,
+      optionIds: idsOf(options.labels),
     }),
     field("severity", {
       name: "Severity",
       type: "select",
-      options: severity,
+      optionIds: idsOf(options.severity),
       required: true,
-      defaultValue: [idOf(severity, "Medium")],
+      defaultValue: [options.severity.get("Medium")!.id],
     }),
     field("timebox", { name: "Timebox (days)", type: "number", required: true, defaultValue: [3] }),
     field("target", { name: "Target date", type: "date" }),
@@ -533,8 +568,16 @@ export function createSampleBoard(): Board {
     ...Object.fromEntries(SCHEMA_KEYS.map((k) => [k, newId()])),
     user: USER_SCHEMA_ID,
   } as Record<SchemaKey, string>;
-  const fields = sampleFields(fieldIds, USER_SCHEMA_ID);
+  const options = sampleOptionNotes();
+  const userIds = NOTE_KEYS.filter((k) => SAMPLE[k].schema === "user").map((k) => ids[k]);
+  const fields = sampleFields(fieldIds, options, userIds);
   const schemas = sampleSchemas(fieldIds, schemaIds);
+  // Option notes by title, per field, to resolve the option names used in the sample data.
+  const optionsByField = new Map<string, Map<string, EditorNode>>([
+    [fieldIds.status, options.status],
+    [fieldIds.severity, options.severity],
+    [fieldIds.labels, options.labels],
+  ]);
 
   const editor = createHeadlessEditor({
     namespace: "sample",
@@ -567,7 +610,7 @@ export function createSampleBoard(): Board {
             typeof atom === "object"
               ? ids[atom.ref]
               : // Sample data names select options; notes store their IDs.
-                (field.options.find((o) => o.name === atom)?.id ?? atom),
+                (optionsByField.get(fieldId)?.get(String(atom))?.id ?? atom),
           )
         : initialValue(field);
     }
@@ -583,5 +626,6 @@ export function createSampleBoard(): Board {
     });
   });
 
-  return { nodes, fields, schemas };
+  const optionNotes = Object.values(options).flatMap((notes) => [...notes.values()]);
+  return { nodes: [...nodes, ...optionNotes], fields, schemas };
 }

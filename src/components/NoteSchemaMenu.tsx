@@ -4,7 +4,12 @@ import { CheckIcon } from "lucide-react";
 import { useCanvasStore } from "../store/canvas.ts";
 import { SchemaIcon } from "../workspace/icons.tsx";
 import { OPTION_COLOR_CLASSES, OPTION_COLORS, type OptionColor } from "../workspace/model.ts";
-import { POPUP_CLASS, POSITIONER_CLASS, useViewportPortal } from "../workspace/ui/popups.tsx";
+import {
+  POPUP_CLASS,
+  POSITIONER_CLASS,
+  usePopupContainer,
+  useViewportPortal,
+} from "../workspace/ui/popups.tsx";
 
 type NoteSchemaMenuProps = {
   schemaId: string | null;
@@ -42,7 +47,10 @@ export function NoteSchemaMenu({
 }: NoteSchemaMenuProps) {
   const schemas = useCanvasStore((s) => s.schemas);
   const current = schemas.find((s) => s.id === schemaId);
+  // On the canvas the menu renders in React Flow's viewport (so it zooms with the note); inside
+  // settings, the surrounding PopupContainerContext points it at the page body instead.
   const viewportPortal = useViewportPortal();
+  const container = usePopupContainer() ?? viewportPortal;
 
   return (
     <Menu.Root>
@@ -52,9 +60,11 @@ export function NoteSchemaMenu({
       >
         <SchemaIcon schemaId={schemaId} className="size-3.5" />
       </Menu.Trigger>
-      <Menu.Portal container={viewportPortal}>
+      <Menu.Portal container={container}>
         <Menu.Positioner sideOffset={4} align="start" className={POSITIONER_CLASS}>
-          <Menu.Popup className={`max-h-[70vh] min-w-40 overflow-y-auto py-1 ${POPUP_CLASS}`}>
+          <Menu.Popup
+            className={`max-h-[var(--available-height)] min-w-40 overflow-y-auto py-1 ${POPUP_CLASS}`}
+          >
             <Menu.Group>
               <Menu.GroupLabel className={groupLabelClass}>Type</Menu.GroupLabel>
               <Menu.RadioGroup

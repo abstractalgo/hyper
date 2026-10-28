@@ -1,21 +1,19 @@
-import { PlusIcon, XIcon } from "lucide-react";
-import { useState } from "react";
+import { go as fuzzySearch } from "fuzzysort";
+import { ArrowDownIcon, ArrowUpIcon, XIcon } from "lucide-react";
+import { useMemo, useState, type KeyboardEvent } from "react";
 
 import { isFieldInUse, newId, useCanvasStore } from "../../store/canvas.ts";
 import {
   FIELD_TYPE_LABELS,
   FIELD_TYPES,
-  isSelectType,
-  OPTION_COLOR_CLASSES,
-  OPTION_COLORS,
   validateField,
-  type OptionColor,
   type FieldDef,
   type FieldType,
 } from "../model.ts";
-import { SchemaIcon } from "../icons.tsx";
 import { Dropdown } from "./Dropdown.tsx";
 import { FieldValueEditor } from "./FieldValueEditor.tsx";
+import { NoteSchemaMenu } from "../../components/NoteSchemaMenu.tsx";
+import { NotePill } from "./SelectEditor.tsx";
 import {
   dangerButtonClass,
   EditorPane,
@@ -32,13 +30,8 @@ const blankField = (): FieldDef => ({
   multiple: false,
   required: false,
   defaultValue: [],
-  referenceSchemaId: null,
-  options: [],
+  optionIds: [],
 });
-
-/** Changing between these keeps values meaningful (option IDs either way). */
-const compatibleTypes = (a: FieldType, b: FieldType) =>
-  a === b || (isSelectType(a) && isSelectType(b));
 
 export function FieldsTab() {
   const fields = useCanvasStore((s) => s.fields);
@@ -56,8 +49,7 @@ export function FieldsTab() {
         items={fields.map((f) => ({
           id: f.id,
           label: f.name,
-          // "Multi-select" already says it holds several values.
-          detail: `${FIELD_TYPE_LABELS[f.type]}${f.multiple && !isSelectType(f.type) ? " · multiple" : ""}`,
+          detail: `${FIELD_TYPE_LABELS[f.type]}${f.multiple ? " · multiple" : ""}${f.required ? " · mandatory" : ""}`,
         }))}
         selectedId={selectedId}
         onSelect={(id) => select(fields.find((f) => f.id === id)!)}
@@ -108,12 +100,14 @@ function FieldForm({
   const usedBy = schemas.filter((sc) => sc.fieldIds.includes(draft.id));
   const errors = validateField(draft);
   const update = (patch: Partial<FieldDef>) => setDraft((d) => ({ ...d, ...patch }));
+  const isSelect = draft.type === "select";
 
   const handleDelete = () => {
     const notesWithValues = nodes.filter((n) => (n.data.fields[draft.id]?.length ?? 0) > 0).length;
     const message =
       `Delete the field “${draft.name}”? It will be removed from ${usedBy.length} schema(s)` +
-      (notesWithValues ? ` and its values deleted from ${notesWithValues} note(s).` : ".");
+      (notesWithValues ? ` and its values deleted from ${notesWithValues} note(s).` : ".") +
+      (draft.optionIds.length ? " Its option notes stay on the canvas." : "");
     if (window.confirm(message)) {
       deleteField(draft.id);
       onDeleted();
@@ -146,78 +140,53 @@ function FieldForm({
           draft.builtIn
             ? "Built-in field; its type is fixed."
             : inUse
-              ? isSelectType(initial.type)
-                ? "Notes have values, so it can only switch between Select and Multi-select."
-                : "Notes have values for this field, so its type can't change."
+              ? "Notes have values for this field, so its type can't change."
               : undefined
         }
       >
         <Dropdown
           label="Field type"
           value={draft.type}
-          disabled={draft.builtIn || (inUse && !isSelectType(initial.type))}
-          onChange={(value) => {
-            const type = value as FieldType;
-            // Select types fix the cardinality; other defaults aren't meaningful for a new type.
-            const multiple = isSelectType(type) ? type === "multiselect" : draft.multiple;
-            update({
-              type,
-              multiple,
-              defaultValue: compatibleTypes(draft.type, type)
-                ? draft.defaultValue.slice(0, multiple ? undefined : 1)
-                : [],
-            });
-          }}
-          items={FIELD_TYPES.filter((t) => !inUse || compatibleTypes(initial.type, t)).map((t) => ({
-            value: t,
-            label: FIELD_TYPE_LABELS[t],
-          }))}
+          disabled={draft.builtIn || inUse}
+          // The old default isn't meaningful for a new type.
+          onChange={(value) => update({ type: value as FieldType, defaultValue: [] })}
+          items={FIELD_TYPES.map((t) => ({ value: t, label: FIELD_TYPE_LABELS[t] }))}
         />
       </FormRow>
-      {draft.type === "reference" && (
-        <FormRow label="Refers to">
-          <Dropdown
-            label="Referenced schema"
-            value={draft.referenceSchemaId ?? ""}
-            onChange={(value) => update({ referenceSchemaId: value || null, defaultValue: [] })}
-            items={[
-              { value: "", label: "Any note" },
-              ...schemas.map((sc) => ({
-                value: sc.id,
-                label: `${sc.name} notes`,
-                icon: <SchemaIcon schemaId={sc.id} className="size-3.5" />,
-              })),
-            ]}
-          />
-        </FormRow>
-      )}
-      {isSelectType(draft.type) && (
-        <FormRow label="Options">
+      {isSelect && (
+        <FormRow
+          label="Options"
+          hint="Options are notes. A note's picker can also find any other note, or create one."
+        >
           <OptionsEditor field={draft} onChange={setDraft} />
         </FormRow>
       )}
-      {!isSelectType(draft.type) && (
-        <FormRow label="Values">
-          <div className="flex gap-4 text-sm">
-            {[false, true].map((multiple) => (
-              <label key={String(multiple)} className="flex items-center gap-1.5">
-                <input
-                  type="radio"
-                  name="multiple"
-                  checked={draft.multiple === multiple}
-                  onChange={() =>
-                    update({
-                      multiple,
-                      defaultValue: multiple ? draft.defaultValue : draft.defaultValue.slice(0, 1),
-                    })
-                  }
-                />
-                {multiple ? "Multiple values" : "Single value"}
-              </label>
-            ))}
-          </div>
-        </FormRow>
-      )}
+      <FormRow label="Values">
+        <div className="flex gap-4 text-sm">
+          {[false, true].map((multiple) => (
+            <label key={String(multiple)} className="flex items-center gap-1.5">
+              <input
+                type="radio"
+                name="multiple"
+                checked={draft.multiple === multiple}
+                onChange={() =>
+                  update({
+                    multiple,
+                    defaultValue: multiple ? draft.defaultValue : draft.defaultValue.slice(0, 1),
+                  })
+                }
+              />
+              {isSelect
+                ? multiple
+                  ? "Multi-select"
+                  : "Single-select"
+                : multiple
+                  ? "Multiple values"
+                  : "Single value"}
+            </label>
+          ))}
+        </div>
+      </FormRow>
       <FormRow label="Mandatory">
         <label className="flex items-center gap-1.5 text-sm">
           <input
@@ -278,7 +247,10 @@ function FieldForm({
   );
 }
 
-/** The option list of a select field in settings: rename, recolor, delete, add. */
+/**
+ * A select field's options in settings: the option notes in picker order, each with its color
+ * (that's the note's own color, changed right away), plus adding an existing note or a new one.
+ */
 function OptionsEditor({
   field,
   onChange,
@@ -286,73 +258,176 @@ function OptionsEditor({
   field: FieldDef;
   onChange: (field: FieldDef) => void;
 }) {
-  const setOption = (id: string, patch: { name?: string; color?: OptionColor }) =>
-    onChange({
-      ...field,
-      options: field.options.map((o) => (o.id === id ? { ...o, ...patch } : o)),
-    });
-  const removeOption = (id: string) =>
-    onChange({
-      ...field,
-      options: field.options.filter((o) => o.id !== id),
-      defaultValue: field.defaultValue.filter((v) => v !== id),
-    });
-  const addOption = () =>
-    onChange({
-      ...field,
-      options: [
-        ...field.options,
-        {
-          id: newId(),
-          name: "",
-          color: OPTION_COLORS[field.options.length % OPTION_COLORS.length]!,
-        },
-      ],
-    });
+  const createOptionNote = useCanvasStore((s) => s.createOptionNote);
+
+  const setOptionIds = (optionIds: string[]) => onChange({ ...field, optionIds });
+  const move = (from: number, to: number) => {
+    const ids = [...field.optionIds];
+    const [id] = ids.splice(from, 1);
+    ids.splice(to, 0, id!);
+    setOptionIds(ids);
+  };
+  const add = (id: string) => setOptionIds([...field.optionIds, id]);
+  const create = (title: string) =>
+    add(createOptionNote(field.id, title, { siblingIds: field.optionIds }));
 
   return (
     <div className="flex flex-col gap-1">
-      {field.options.map((option) => (
-        <div key={option.id} className="flex items-center gap-1.5">
-          {/* The dropdown fills its container; this keeps it narrow. */}
-          <div className="w-28 shrink-0">
-            <Dropdown
-              label={`Color of ${option.name || "option"}`}
-              value={option.color}
-              onChange={(color) => setOption(option.id, { color: color as OptionColor })}
-              items={OPTION_COLORS.map((c) => ({
-                value: c,
-                label: c[0]!.toUpperCase() + c.slice(1),
-                icon: <span className={`size-3.5 shrink-0 rounded ${OPTION_COLOR_CLASSES[c]}`} />,
-              }))}
-              className="h-7 text-xs"
-            />
+      {field.optionIds.map((id, i) => (
+        <div key={id} className="flex items-center gap-1.5">
+          <OptionNoteMenu noteId={id} />
+          <div className="min-w-0 flex-1">
+            <NotePill noteId={id} />
           </div>
-          <input
-            aria-label="Option name"
-            value={option.name}
-            placeholder="Option name"
-            onChange={(e) => setOption(option.id, { name: e.target.value })}
-            className={`${textInputClass} h-7`}
-          />
           <button
             type="button"
-            aria-label={`Delete ${option.name || "option"}`}
-            onClick={() => removeOption(option.id)}
+            aria-label="Move up"
+            disabled={i === 0}
+            onClick={() => move(i, i - 1)}
+            className="rounded p-1 text-gray-500 hover:bg-gray-100 disabled:opacity-30"
+          >
+            <ArrowUpIcon className="size-3.5" />
+          </button>
+          <button
+            type="button"
+            aria-label="Move down"
+            disabled={i === field.optionIds.length - 1}
+            onClick={() => move(i, i + 1)}
+            className="rounded p-1 text-gray-500 hover:bg-gray-100 disabled:opacity-30"
+          >
+            <ArrowDownIcon className="size-3.5" />
+          </button>
+          <button
+            type="button"
+            aria-label="Remove from options"
+            title="Remove from options (keeps the note)"
+            onClick={() => setOptionIds(field.optionIds.filter((o) => o !== id))}
             className="rounded p-1 text-gray-500 hover:bg-gray-100"
           >
             <XIcon className="size-3.5" />
           </button>
         </div>
       ))}
-      <button
-        type="button"
-        onClick={addOption}
-        className="flex w-fit items-center gap-1 rounded px-1.5 py-1 text-sm text-gray-700 hover:bg-gray-100"
-      >
-        <PlusIcon className="size-3.5" />
-        Add option
-      </button>
+      <AddOptionInput exclude={field.optionIds} onPick={add} onCreate={create} />
     </div>
+  );
+}
+
+const MAX_MATCHES = 8;
+
+type AddRow = { kind: "note"; id: string } | { kind: "create"; title: string };
+
+/**
+ * Adds an option the way the canvas picker does: type to match existing notes (that aren't
+ * options yet), or to create a new note when no note has that exact title.
+ */
+function AddOptionInput({
+  exclude,
+  onPick,
+  onCreate,
+}: {
+  exclude: string[];
+  onPick: (noteId: string) => void;
+  onCreate: (title: string) => void;
+}) {
+  const [query, setQuery] = useState("");
+  const [active, setActive] = useState(0);
+  const nodes = useCanvasStore((s) => s.nodes);
+  const trimmed = query.trim();
+
+  const rows = useMemo((): AddRow[] => {
+    if (!trimmed) return [];
+    const matches = fuzzySearch(
+      trimmed,
+      nodes.filter((n) => !exclude.includes(n.id)),
+      { key: (n) => n.data.title, threshold: 0, limit: MAX_MATCHES },
+    ).map((r): AddRow => ({ kind: "note", id: r.obj.id }));
+    const exists = nodes.some((n) => n.data.title.toLowerCase() === trimmed.toLowerCase());
+    return exists ? matches : [...matches, { kind: "create", title: trimmed }];
+  }, [nodes, exclude, trimmed]);
+
+  const choose = (row: AddRow) => {
+    if (row.kind === "note") onPick(row.id);
+    else onCreate(row.title);
+    setQuery("");
+    setActive(0);
+  };
+  const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      e.preventDefault();
+      const step = e.key === "ArrowDown" ? 1 : -1;
+      setActive((i) => (rows.length === 0 ? 0 : (i + step + rows.length) % rows.length));
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      const row = rows[active];
+      if (row) choose(row);
+    } else if (e.key === "Escape" && query) {
+      // Clear the search instead of closing the settings dialog.
+      e.preventDefault();
+      e.stopPropagation();
+      setQuery("");
+    }
+  };
+
+  return (
+    <div className="relative mt-1">
+      <input
+        aria-label="Add an option: find a note or create one"
+        placeholder="Add an option…"
+        value={query}
+        onChange={(e) => {
+          setQuery(e.target.value);
+          setActive(0);
+        }}
+        onKeyDown={handleKeyDown}
+        className={`${textInputClass} h-7`}
+      />
+      {rows.length > 0 && (
+        <ul className="absolute top-full right-0 left-0 z-10 mt-1 max-h-56 overflow-y-auto rounded-md border border-gray-200 bg-white p-1 shadow-lg">
+          {rows.map((row, i) => (
+            <li key={row.kind === "note" ? row.id : "create"}>
+              <button
+                type="button"
+                aria-current={active === i}
+                onMouseEnter={() => setActive(i)}
+                // Keep focus in the input so typing can continue after a pick.
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => choose(row)}
+                className="flex w-full items-center gap-1.5 rounded px-2 py-1 text-left text-xs text-gray-600 aria-current:bg-gray-100"
+              >
+                {row.kind === "note" ? (
+                  <NotePill noteId={row.id} />
+                ) : (
+                  <>
+                    Create
+                    <span className="truncate rounded bg-gray-100 px-1.5 leading-5 text-gray-800">
+                      {row.title}
+                    </span>
+                  </>
+                )}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+/** The option note's type & color menu, the same one as in the note's title bar on the canvas. */
+function OptionNoteMenu({ noteId }: { noteId: string }) {
+  const schemaId = useCanvasStore(
+    (s) => s.nodes.find((n) => n.id === noteId)?.data.schemaId ?? null,
+  );
+  const color = useCanvasStore((s) => s.nodes.find((n) => n.id === noteId)?.data.color ?? null);
+  const setNoteSchema = useCanvasStore((s) => s.setNoteSchema);
+  const updateNodeData = useCanvasStore((s) => s.updateNodeData);
+  return (
+    <NoteSchemaMenu
+      schemaId={schemaId}
+      color={color}
+      onSchemaChange={(id) => setNoteSchema(noteId, id)}
+      onColorChange={(c) => updateNodeData(noteId, { color: c })}
+    />
   );
 }

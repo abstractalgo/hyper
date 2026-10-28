@@ -3,11 +3,7 @@ import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 
 import { debouncedLocalStorage } from "./debouncedStorage.ts";
-import {
-  enumSchemasToSelectFields,
-  textFieldsToSelects,
-  ticketPrefixToSuffix,
-} from "./migrations.ts";
+import { optionsToNotes } from "./optionsToNotes.ts";
 import {
   BUILT_IN_FIELDS,
   BUILT_IN_SCHEMAS,
@@ -65,6 +61,16 @@ type CanvasState = Board & {
   addNode: (position: XYPosition) => void;
   /** Adds a note to the right of `sourceId`, below any notes already there. Returns its ID. */
   createNoteBeside: (sourceId: string, title: string) => string;
+  /**
+   * Creates a plain note as a new option of select field `fieldId`: placed below the field's other
+   * option notes (or right of `nearNoteId` if it has none), and appended to its options if the
+   * field is saved. `siblingIds` overrides the field's saved options (e.g. a settings draft).
+   */
+  createOptionNote: (
+    fieldId: string,
+    title: string,
+    place?: { nearNoteId?: string; siblingIds?: string[] },
+  ) => string;
   updateNodeData: (id: string, data: Partial<EditorNodeData>) => void;
   setMentionAnchors: (id: string, anchors: MentionAnchor[]) => void;
   setHoveredMention: (mention: MentionLink | null) => void;
@@ -167,15 +173,8 @@ const overlaps = (a: Rect, b: Rect) =>
   a.y < b.y + b.height + GAP_Y &&
   b.y < a.y + a.height + GAP_Y;
 
-/** First free slot right of `source`, sliding down past any notes in the way. */
-function positionBeside(source: EditorNode, nodes: EditorNode[]): XYPosition {
-  const from = rectOf(source);
-  const slot: Rect = {
-    x: from.x + from.width + GAP_X,
-    y: from.y,
-    width: NOTE_WIDTH,
-    height: ESTIMATED_NOTE_HEIGHT,
-  };
+/** Moves `slot` down until it doesn't overlap any note. */
+function slideDown(slot: Rect, nodes: EditorNode[]): XYPosition {
   for (let blocker = nodes.find((n) => overlaps(slot, rectOf(n))); blocker;) {
     const r = rectOf(blocker);
     slot.y = r.y + r.height + GAP_Y;
@@ -183,6 +182,27 @@ function positionBeside(source: EditorNode, nodes: EditorNode[]): XYPosition {
   }
   return { x: slot.x, y: slot.y };
 }
+
+/** First free slot right of `source`, sliding down past any notes in the way. */
+function positionBeside(source: EditorNode, nodes: EditorNode[], width = NOTE_WIDTH): XYPosition {
+  const from = rectOf(source);
+  return slideDown(
+    { x: from.x + from.width + GAP_X, y: from.y, width, height: ESTIMATED_NOTE_HEIGHT },
+    nodes,
+  );
+}
+
+/** First free slot below the lowest of `siblings` (same column), sliding past notes in the way. */
+function positionBelow(siblings: EditorNode[], nodes: EditorNode[], width: number): XYPosition {
+  const lowest = siblings.map(rectOf).reduce((a, b) => (b.y + b.height > a.y + a.height ? b : a));
+  return slideDown(
+    { x: lowest.x, y: lowest.y + lowest.height + GAP_Y, width, height: ESTIMATED_NOTE_HEIGHT },
+    nodes,
+  );
+}
+
+/** Notes created as select options are small, like tags. */
+export const OPTION_NOTE_WIDTH = 240;
 
 export const newId = () => crypto.randomUUID();
 export const newNoteId = newId;
@@ -195,6 +215,7 @@ type NewNote = {
   color?: OptionColor | null;
   content?: string | null;
   id?: string;
+  width?: number;
 };
 
 export const createNote = ({
@@ -205,11 +226,12 @@ export const createNote = ({
   color = null,
   content = null,
   id = newNoteId(),
+  width = NOTE_WIDTH,
 }: NewNote): EditorNode => ({
   id,
   type: "editor",
   position,
-  width: NOTE_WIDTH,
+  width,
   data: { title, schemaId, fields, color, content },
 });
 
@@ -243,9 +265,37 @@ export const useCanvasStore = create<CanvasState>()(
             return { nodes: withoutHeight(applyNodeChanges(changes, s.nodes)) };
           const mentionAnchors = { ...s.mentionAnchors };
           for (const id of removed) delete mentionAnchors[id];
-          const nodes = withoutHeight(applyNodeChanges(changes, s.nodes));
+          const gone = new Set(removed);
+          // Deleted notes disappear from select fields: their options, defaults and values.
+          const fields = s.fields.map((f) =>
+            f.type === "select" &&
+            [...f.optionIds, ...f.defaultValue].some((id) => gone.has(String(id)))
+              ? {
+                  ...f,
+                  optionIds: f.optionIds.filter((id) => !gone.has(id)),
+                  defaultValue: f.defaultValue.filter((id) => !gone.has(String(id))),
+                }
+              : f,
+          );
+          const selectIds = new Set(fields.filter((f) => f.type === "select").map((f) => f.id));
+          const nodes = withoutHeight(applyNodeChanges(changes, s.nodes)).map((n) => {
+            const touched = Object.keys(n.data.fields).filter(
+              (id) => selectIds.has(id) && n.data.fields[id]!.some((v) => gone.has(String(v))),
+            );
+            if (touched.length === 0) return n;
+            const values = { ...n.data.fields };
+            for (const id of touched) {
+              const field = fields.find((f) => f.id === id)!;
+              values[id] = conformValue(
+                field,
+                values[id]!.filter((v) => !gone.has(String(v))),
+              );
+            }
+            return { ...n, data: { ...n.data, fields: values } };
+          });
           return {
             nodes,
+            fields,
             mentionAnchors,
             highlight: pruneHighlight(s.highlight, nodes, mentionAnchors),
           };
@@ -260,6 +310,27 @@ export const useCanvasStore = create<CanvasState>()(
         const position = source ? positionBeside(source, nodes) : { x: 0, y: 0 };
         const note = createNote({ title, position });
         set({ nodes: [...nodes, note] });
+        return note.id;
+      },
+      createOptionNote: (fieldId, title, place = {}) => {
+        const { nodes, fields } = get();
+        const field = fields.find((f) => f.id === fieldId);
+        const siblingIds = place.siblingIds ?? field?.optionIds ?? [];
+        const siblings = nodes.filter((n) => siblingIds.includes(n.id));
+        const near = nodes.find((n) => n.id === place.nearNoteId);
+        const position =
+          siblings.length > 0
+            ? positionBelow(siblings, nodes, OPTION_NOTE_WIDTH)
+            : near
+              ? positionBeside(near, nodes, OPTION_NOTE_WIDTH)
+              : { x: 0, y: 0 };
+        const note = createNote({ title, position, width: OPTION_NOTE_WIDTH });
+        set({
+          nodes: [...nodes, note],
+          fields: fields.map((f) =>
+            f.id === fieldId ? { ...f, optionIds: [...f.optionIds, note.id] } : f,
+          ),
+        });
         return note.id;
       },
       updateNodeData: (id, data) =>
@@ -387,33 +458,9 @@ export const useCanvasStore = create<CanvasState>()(
     }),
     {
       name: "hyper-board",
-      version: 8,
-      migrate: (persisted, version) => {
-        let state = persisted as Board & { initialized: boolean };
-        // v2 added select/multi-select fields, which need `options` on every field.
-        if (version < 2) {
-          state.fields = state.fields.map((f) => ({ ...f, options: f.options ?? [] }));
-        }
-        // v3: the sample's Status/Severity/Labels text fields become selects.
-        if (version < 3) {
-          state = { ...state, ...textFieldsToSelects(state) };
-        }
-        // v4: ticket keys moved from title prefix to suffix.
-        if (version < 4) {
-          state = { ...state, ...ticketPrefixToSuffix(state) };
-        }
-        // v5: notes no longer have a fixed height (no scrolling inside notes).
-        if (version < 5) {
-          state = { ...state, nodes: withoutHeight(state.nodes) };
-        }
-        // v6 briefly moved select options into "enum" schemas; v7/v8 move them back onto fields.
-        // Applied by content, not version: while switching back, dev-server reloads re-saved
-        // enum-shaped data labelled v5 and then v7. The conversion leaves correct data as is.
-        if (version < 8) {
-          state = { ...state, ...enumSchemasToSelectFields(state) };
-        }
-        return state as CanvasState;
-      },
+      version: 9,
+      // Saved boards from before options were notes get converted once, on load.
+      migrate: (persisted) => optionsToNotes(persisted as CanvasState),
       storage: createJSONStorage(() => debouncedLocalStorage()),
       partialize: (s) => ({
         initialized: s.initialized,

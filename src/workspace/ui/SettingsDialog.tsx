@@ -1,6 +1,7 @@
 import { Dialog } from "@base-ui/react/dialog";
 import { SettingsIcon, XIcon } from "lucide-react";
 import { lazy, Suspense, useEffect, useState } from "react";
+import { PopupContainerContext } from "./popups.tsx";
 
 // The tabs, forms and pickers are only needed once the dialog is opened.
 const SettingsPanel = lazy(() => import("./SettingsPanel.tsx"));
@@ -47,7 +48,10 @@ export function SettingsDialog() {
             </Dialog.Close>
           </div>
           <Suspense fallback={<p className="p-4 text-sm text-gray-500">Loading…</p>}>
-            <SettingsPanel />
+            {/* Popups in settings (e.g. a note's type & color menu) open over the dialog. */}
+            <PopupContainerContext.Provider value={document.body}>
+              <SettingsPanel />
+            </PopupContainerContext.Provider>
           </Suspense>
         </Dialog.Popup>
       </Dialog.Portal>

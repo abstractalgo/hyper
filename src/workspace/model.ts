@@ -5,9 +5,7 @@ export const FIELD_TYPES = [
   "image",
   "date",
   "datetime",
-  "reference",
   "select",
-  "multiselect",
 ] as const;
 export type FieldType = (typeof FIELD_TYPES)[number];
 
@@ -18,13 +16,8 @@ export const FIELD_TYPE_LABELS: Record<FieldType, string> = {
   image: "Image (URL)",
   date: "Date",
   datetime: "Date & time",
-  reference: "Reference",
   select: "Select",
-  multiselect: "Multi-select",
 };
-
-/** Enum-like types: values are IDs of the field's own options. */
-export const isSelectType = (type: FieldType) => type === "select" || type === "multiselect";
 
 export const OPTION_COLORS = [
   "gray",
@@ -40,8 +33,8 @@ export const OPTION_COLORS = [
 export type OptionColor = (typeof OPTION_COLORS)[number];
 
 /**
- * Pill classes per option color: Notion's select-tag colors (light theme), as literal strings so
- * Tailwind picks them up.
+ * Note colors (title bar, mentions, select pills): Notion's select-tag colors (light theme), as
+ * literal strings so Tailwind picks them up.
  */
 export const OPTION_COLOR_CLASSES: Record<OptionColor, string> = {
   gray: "bg-[#E3E2E0] text-[#32302C]",
@@ -55,13 +48,10 @@ export const OPTION_COLOR_CLASSES: Record<OptionColor, string> = {
   red: "bg-[#FFE2DD] text-[#5D1715]",
 };
 
-/** One choice of a select/multi-select field. Notes store its `id`, so renames propagate. */
-export type SelectOption = { id: string; name: string; color: OptionColor };
-
 /**
  * One value of a field. Numbers are numbers; everything else is a string:
- * text, a Lucide icon name, an image URL, `YYYY-MM-DD`, `YYYY-MM-DDTHH:mm`, a note ID,
- * or a select option ID.
+ * text, a Lucide icon name, an image URL, `YYYY-MM-DD`, `YYYY-MM-DDTHH:mm`, or (for selects) a
+ * note ID.
  */
 export type FieldAtom = string | number;
 
@@ -73,16 +63,17 @@ export type FieldDef = {
   id: string;
   name: string;
   type: FieldType;
-  /** Holds a list of values instead of one. Always false for `select`, true for `multiselect`. */
+  /** Holds a list of values instead of one (for selects: multi-select instead of single-select). */
   multiple: boolean;
   /** Can't be left empty; new notes start with `defaultValue`. */
   required: boolean;
   /** Initial value for required fields (non-empty). Optional fields start empty. */
   defaultValue: FieldValue;
-  /** For `reference` fields: only notes of this schema can be picked (null = any note). */
-  referenceSchemaId: string | null;
-  /** For `select`/`multiselect` fields: the choices, in display order. */
-  options: SelectOption[];
+  /**
+   * For `select` fields: the notes offered as options, in picker order. Any other note can still
+   * be picked by searching; notes created from the picker are added here.
+   */
+  optionIds: string[];
   /** Built-in fields can't be deleted or retyped. */
   builtIn?: boolean;
 };
@@ -134,8 +125,7 @@ export const BUILT_IN_FIELDS: FieldDef[] = [
     multiple: false,
     required: false,
     defaultValue: [],
-    referenceSchemaId: null,
-    options: [],
+    optionIds: [],
     builtIn: true,
   },
 ];
@@ -158,8 +148,6 @@ export const initialValue = (field: FieldDef): FieldValue =>
 /** Brings an existing value in line with a field's (possibly changed) rules. */
 export function conformValue(field: FieldDef, value: FieldValue | undefined): FieldValue {
   let next = value ?? [];
-  // Values pointing at deleted options are dropped.
-  if (isSelectType(field.type)) next = next.filter((id) => field.options.some((o) => o.id === id));
   if (!field.multiple) next = next.slice(0, 1);
   if (field.required && next.length === 0) next = [...field.defaultValue];
   return next;
@@ -174,11 +162,6 @@ export function validateField(field: FieldDef): string[] {
   }
   if (!field.multiple && field.defaultValue.length > 1) {
     errors.push("A single-value field can only have one default.");
-  }
-  if (isSelectType(field.type)) {
-    const names = field.options.map((o) => o.name.trim().toLowerCase());
-    if (names.some((n) => !n)) errors.push("Options need a name.");
-    if (new Set(names).size !== names.length) errors.push("Option names must be unique.");
   }
   return errors;
 }

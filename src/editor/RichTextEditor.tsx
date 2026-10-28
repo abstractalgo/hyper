@@ -56,7 +56,7 @@ export function RichTextEditor({
         <RichTextPlugin
           contentEditable={
             <ContentEditable
-              className="min-h-24 px-3 pt-2 pb-3.5 text-sm text-gray-900 outline-none"
+              className="px-3 pt-2 pb-3.5 text-sm text-gray-900 outline-none"
               aria-placeholder={placeholder}
               placeholder={<div className="rte-placeholder">{placeholder}</div>}
             />

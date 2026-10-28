@@ -70,6 +70,7 @@ type SampleField<N extends string> = {
   name: string;
   type: FieldType;
   icon?: IconRef;
+  /** Selects only: multi-select. */
   multiple?: boolean;
   required?: boolean;
   /** Required fields' default: option names for selects, else values. */
@@ -174,10 +175,9 @@ export function buildBoard<N extends string, F extends string, S extends string>
     return {
       id: fieldIds[key],
       ...def,
-      multiple,
       required,
       defaultValue: defaultValue.map((atom) => resolve(key, atom)),
-      ...(def.type === "select" && { optionIds }),
+      ...(def.type === "select" && { optionIds, multiple }),
     } as FieldDef;
   });
 

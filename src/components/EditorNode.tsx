@@ -56,6 +56,7 @@ export const EditorNodeView = memo(function EditorNodeView({
       ),
     ].join(","),
   );
+  const propertiesRight = useCanvasStore((s) => s.propertiesPosition === "right");
   const updateNodeInternals = useUpdateNodeInternals();
   const rootRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
@@ -92,7 +93,8 @@ export const EditorNodeView = memo(function EditorNodeView({
   return (
     <div
       ref={rootRef}
-      className={`relative flex w-full flex-col rounded-lg border bg-white shadow-sm ${
+      // group/note: parts of the note that only show while it's hovered.
+      className={`group/note relative flex w-full flex-col rounded-lg border bg-white shadow-sm ${
         highlighted
           ? "border-amber-400 ring-4 ring-amber-200"
           : selected
@@ -130,12 +132,16 @@ export const EditorNodeView = memo(function EditorNodeView({
           />
         ))}
       </div>
-      <NoteProperties noteId={id} />
-      {/* nodrag: selecting text shouldn't drag the note. nokey: React Flow ignores keys typed here
-          (it only skips contenteditable elements themselves, and a focused todo item isn't one, so
-          arrows would move the note). No overflow: notes grow with content. */}
-      <div ref={contentRef} className="nodrag nokey cursor-text">
-        <RichTextEditor noteId={id} initialContent={data.content} onChange={handleChange} />
+      {/* Fields above the text, or right of it (a workspace setting). The editor keeps its place
+          in the tree either way, so switching doesn't remount it. */}
+      <div className={propertiesRight ? "flex flex-row-reverse" : "flex flex-col"}>
+        <NoteProperties noteId={id} selected={selected} />
+        {/* nodrag: selecting text shouldn't drag the note. nokey: React Flow ignores keys typed here
+            (it only skips contenteditable elements themselves, and a focused todo item isn't one, so
+            arrows would move the note). No overflow: notes grow with content. */}
+        <div ref={contentRef} className="nodrag nokey min-w-0 flex-1 cursor-text">
+          <RichTextEditor noteId={id} initialContent={data.content} onChange={handleChange} />
+        </div>
       </div>
       {anchors.map((anchor, i) => (
         <Handle

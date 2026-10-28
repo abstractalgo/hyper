@@ -30,25 +30,6 @@ body {
   isolation: isolate;
 }
 
-/* Native date pickers: show the calendar icon only on hover/focus, keeping property rows quiet */
-input[type="date"]::-webkit-calendar-picker-indicator,
-input[type="datetime-local"]::-webkit-calendar-picker-indicator {
-  @apply opacity-0;
-}
-input[type="date"]:is(:hover, :focus)::-webkit-calendar-picker-indicator,
-input[type="datetime-local"]:is(:hover, :focus)::-webkit-calendar-picker-indicator {
-  @apply opacity-60;
-}
-/* Empty pickers are blank, like other empty values: no "yyyy-mm-dd" and no icon until focused */
-input:is([type="date"], [type="datetime-local"])[data-empty]:not(:focus) {
-  @apply text-transparent;
-}
-input:is([type="date"], [type="datetime-local"])[data-empty]:not(
-    :focus
-  )::-webkit-calendar-picker-indicator {
-  @apply opacity-0;
-}
-
 /* Note handles: anchors for @mention edges, not interactive */
 .react-flow__handle.note-handle {
   @apply size-1.5 min-h-0 min-w-0 border-0 bg-gray-400;

@@ -1,5 +1,5 @@
 import { PlusIcon, XIcon } from "lucide-react";
-import { useState, type KeyboardEvent } from "react";
+import { useRef, useState } from "react";
 
 import { useCanvasStore } from "../../store/canvas";
 import { IconByName } from "../icons";
@@ -36,8 +36,12 @@ type FieldValueEditorProps = {
 
 // When an input starts the row, pull it left by its border + padding (5px) so its text lines up
 // with chips and pills in other rows; the hover/focus border still has room around the text.
+// Inputs are as wide as what's in them (or their placeholder), not the whole row.
 const inputClass =
-  "h-6 w-full min-w-0 first:-ml-[5px] rounded border border-transparent bg-transparent px-1 text-xs text-gray-800 outline-none hover:border-gray-200 focus:border-blue-500 focus:bg-white";
+  "h-6 min-w-[min(4rem,100%)] max-w-full field-sizing-content first:-ml-[5px] rounded border border-transparent bg-transparent px-1 text-xs text-gray-800 outline-none hover:border-gray-200 focus:border-blue-500 focus:bg-white";
+// Like an input (see inputClass), but sized by its text.
+const dateTextClass =
+  "h-6 flex-1 truncate rounded border border-transparent px-1 text-left text-xs text-gray-800 outline-none hover:border-gray-200 focus-visible:border-blue-500";
 const iconButtonClass =
   "flex size-5 shrink-0 items-center justify-center rounded text-gray-400 hover:bg-gray-100 hover:text-gray-700";
 const chipClass =
@@ -55,10 +59,6 @@ export function FieldValueEditor({
   const saveField = useCanvasStore((s) => s.saveField);
   const createOptionNote = useCanvasStore((s) => s.createOptionNote);
   const canRemove = allowEmpty || !field.required || value.length > 1;
-  const add = (atom: FieldAtom) => {
-    if (!value.includes(atom)) onChange(field.multiple ? [...value, atom] : [atom]);
-  };
-  const removeAt = (i: number) => onChange(value.filter((_, j) => j !== i));
 
   if (field.type === "select") {
     const changeField = onFieldChange ?? saveField;
@@ -83,7 +83,18 @@ export function FieldValueEditor({
     );
   }
 
-  if (!field.multiple && isInlineType(field.type)) {
+  // Only selects hold several values (see SelectEditor); every other field holds one.
+  if (isDateField(field)) {
+    return (
+      <DateValue
+        field={field}
+        atom={value[0]}
+        onPick={(atom) => onChange(atom === null ? (canRemove ? [] : value) : [atom])}
+      />
+    );
+  }
+
+  if (isInlineType(field.type)) {
     return (
       <InlineAtomInput
         field={field}
@@ -93,33 +104,89 @@ export function FieldValueEditor({
     );
   }
 
+  // What's left is an icon: shown as a chip (removable if it may be empty), or a picker.
+  const icon = value[0];
+  if (icon === undefined) {
+    return (
+      <IconPicker
+        label={`Choose ${field.name}`}
+        onPick={(picked) => onChange([picked])}
+        triggerClassName={iconButtonClass}
+      >
+        <PlusIcon className="size-3.5" />
+      </IconPicker>
+    );
+  }
   return (
-    <div className="flex min-w-0 flex-wrap items-center gap-1">
-      {value.map((atom, i) => (
-        <span key={`${atom}-${i}`} className={chipClass}>
-          <AtomView field={field} atom={atom} />
-          {canRemove && (
-            <button
-              type="button"
-              aria-label="Remove"
-              onClick={() => removeAt(i)}
-              className="rounded p-0.5 text-gray-400 hover:bg-gray-200 hover:text-gray-700"
-            >
-              <XIcon className="size-3" />
-            </button>
-          )}
-        </span>
-      ))}
-      {(field.multiple || value.length === 0) && <AtomAdder field={field} onAdd={add} />}
-    </div>
+    <span className={chipClass}>
+      <IconByName name={String(icon)} label={String(icon)} className="size-3.5" />
+      {canRemove && (
+        <button
+          type="button"
+          aria-label="Remove"
+          onClick={() => onChange([])}
+          className="rounded p-0.5 text-gray-400 hover:bg-gray-200 hover:text-gray-700"
+        >
+          <XIcon className="size-3" />
+        </button>
+      )}
+    </span>
   );
 }
 
-/** Single values of types with a native input (text, number, URL, dates) are edited in place. */
+const isDateField = (field: FieldDef): field is FieldDef & { type: "date" | "datetime" } =>
+  field.type === "date" || field.type === "datetime";
+
+/**
+ * A date shown as plain text, as wide as the text (blank when there's none). Clicking it opens
+ * the browser's date picker, anchored on the text: an invisible date input underneath only
+ * provides the picker, so its own width and calendar icon don't take up room.
+ */
+function DateValue({
+  field,
+  atom,
+  onPick,
+}: {
+  field: FieldDef & { type: "date" | "datetime" };
+  atom: FieldAtom | undefined;
+  /** The picked value, or null when the picker's "Clear" was used. */
+  onPick: (atom: FieldAtom | null) => void;
+}) {
+  const pickerRef = useRef<HTMLInputElement>(null);
+  const current = atom === undefined ? "" : String(atom);
+  const text = current ? formatDateAtom(field.type, current) : "";
+
+  return (
+    // min-w-12: empty, it's still wide enough to click.
+    <span className="relative inline-flex min-w-12 first:-ml-[5px]">
+      <button
+        type="button"
+        aria-label={`${field.name}: ${text || "not set"}`}
+        onClick={() => pickerRef.current?.showPicker()}
+        className={dateTextClass}
+      >
+        {text}
+      </button>
+      <input
+        ref={pickerRef}
+        type={nativeInputType(field.type)}
+        tabIndex={-1}
+        aria-hidden
+        value={current}
+        onChange={(e) =>
+          onPick(e.target.value === "" ? null : parseAtom(field.type, e.target.value))
+        }
+        className="pointer-events-none absolute inset-0 size-full opacity-0"
+      />
+    </span>
+  );
+}
+
+/** Single values of types with a native input (text, number, URL) are edited in place. */
 const isInlineType = (type: FieldType) => FIELD_TYPE_SPECS[type].input !== null;
 const nativeInputType = (type: FieldType) => FIELD_TYPE_SPECS[type].input ?? "text";
 
-/** A single text/number/date/image value, edited in place; commits on Enter/blur (or pick). */
+/** A single text/number/image value, edited in place; commits on Enter/blur. */
 function InlineAtomInput({
   field,
   atom,
@@ -138,8 +205,6 @@ function InlineAtomInput({
     // Invalid input reverts; empty input clears (if allowed).
     if (parsed !== null || raw.trim() === "") onCommit(parsed);
   };
-  const isPicker = field.type === "date" || field.type === "datetime";
-
   return (
     <div className="flex min-w-0 items-center gap-1">
       {field.type === "image" && typeof atom === "string" && (
@@ -150,12 +215,8 @@ function InlineAtomInput({
         aria-label={field.name}
         placeholder={field.type === "image" ? "https://…" : "Empty"}
         value={draft ?? current}
-        // Empty pickers show nothing (not "yyyy-mm-dd" and an icon; see index.css), so a click
-        // opens the calendar rather than focusing a blank date segment.
-        data-empty={isPicker && current === "" ? "" : undefined}
-        onClick={(e) => isPicker && current === "" && e.currentTarget.showPicker()}
-        onChange={(e) => (isPicker ? commit(e.target.value) : setDraft(e.target.value))}
-        onBlur={(e) => !isPicker && commit(e.target.value)}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={(e) => commit(e.target.value)}
         onKeyDown={(e) => {
           if (e.key === "Enter") e.currentTarget.blur();
           if (e.key === "Escape") {
@@ -166,73 +227,5 @@ function InlineAtomInput({
         className={`${inputClass} ${(draft ?? current) === "" ? "text-gray-400" : ""}`}
       />
     </div>
-  );
-}
-
-/** Read-only rendering of one value (inside a chip). */
-function AtomView({ field, atom }: { field: FieldDef; atom: FieldAtom }) {
-  switch (field.type) {
-    case "icon":
-      return <IconByName name={String(atom)} label={String(atom)} className="size-3.5" />;
-    case "image":
-      return <img src={String(atom)} alt="" className="size-5 rounded object-cover" />;
-    case "date":
-    case "datetime":
-      return <span className="truncate">{formatDateAtom(field.type, atom)}</span>;
-    default:
-      return <span className="truncate">{String(atom)}</span>;
-  }
-}
-
-/** Control for adding a value: a picker for icons/dates, a text box otherwise. */
-function AtomAdder({ field, onAdd }: { field: FieldDef; onAdd: (atom: FieldAtom) => void }) {
-  const [draft, setDraft] = useState("");
-
-  if (field.type === "icon") {
-    return (
-      <IconPicker label={`Add ${field.name}`} onPick={onAdd} triggerClassName={iconButtonClass}>
-        <PlusIcon className="size-3.5" />
-      </IconPicker>
-    );
-  }
-  if (field.type === "date" || field.type === "datetime") {
-    return (
-      <input
-        type={nativeInputType(field.type)}
-        aria-label={`Add ${field.name}`}
-        value=""
-        onChange={(e) => {
-          const atom = parseAtom(field.type, e.target.value);
-          if (atom !== null) onAdd(atom);
-        }}
-        className={`${inputClass} w-auto`}
-      />
-    );
-  }
-
-  const submit = () => {
-    const atom = parseAtom(field.type, draft);
-    if (atom !== null) {
-      onAdd(atom);
-      setDraft("");
-    }
-  };
-  const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      submit();
-    }
-  };
-  return (
-    <input
-      type={nativeInputType(field.type)}
-      aria-label={`Add ${field.name}`}
-      placeholder="Add…"
-      value={draft}
-      onChange={(e) => setDraft(e.target.value)}
-      onKeyDown={handleKeyDown}
-      onBlur={submit}
-      className={`${inputClass} w-20 flex-1`}
-    />
   );
 }

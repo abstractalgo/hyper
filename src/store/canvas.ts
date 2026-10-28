@@ -51,10 +51,20 @@ export type MentionAnchor = {
 };
 
 /** One `@mention` link: the mentioning note, that mention's handle, and the mentioned note. */
-export type MentionLink = { sourceId: string; handleId: string; targetId: string };
+export type MentionLink = {
+  sourceId: string;
+  handleId: string;
+  targetId: string;
+};
 
 /** What a click has highlighted: one edge, or every edge coming into a note. */
 export type Highlight = { kind: "link"; link: MentionLink } | { kind: "incoming"; noteId: string };
+
+/** Where notes show their fields: above their text (one per row, or inline), or right of it. */
+export type PropertiesPosition = "top" | "top-inline" | "right";
+
+/** What labels each field in the inline layout: its name, its icon, or both. */
+export type InlineLabels = "name" | "icon" | "both";
 
 export type SettingsTab = "fields" | "schemas" | "icons" | "workspace";
 
@@ -69,6 +79,12 @@ export type Board = {
 type CanvasState = Board & {
   /** False until a board has been loaded (first visit, before the sample is seeded). */
   initialized: boolean;
+  /** A workspace setting: where notes show their fields. */
+  propertiesPosition: PropertiesPosition;
+  setPropertiesPosition: (position: PropertiesPosition) => void;
+  /** A workspace setting, for the inline layout: what labels each field. */
+  inlineLabels: InlineLabels;
+  setInlineLabels: (labels: InlineLabels) => void;
   /** Where the canvas was panned/zoomed to; null until the user first moves it. */
   viewport: Viewport | null;
   /**
@@ -224,7 +240,12 @@ function slideDown(slot: Rect, nodes: EditorNode[]): XYPosition {
 function positionBeside(source: EditorNode, nodes: EditorNode[], width = NOTE_WIDTH): XYPosition {
   const from = rectOf(source);
   return slideDown(
-    { x: from.x + from.width + GAP_X, y: from.y, width, height: ESTIMATED_NOTE_HEIGHT },
+    {
+      x: from.x + from.width + GAP_X,
+      y: from.y,
+      width,
+      height: ESTIMATED_NOTE_HEIGHT,
+    },
     nodes,
   );
 }
@@ -233,7 +254,12 @@ function positionBeside(source: EditorNode, nodes: EditorNode[], width = NOTE_WI
 function positionBelow(siblings: EditorNode[], nodes: EditorNode[], width: number): XYPosition {
   const lowest = siblings.map(rectOf).reduce((a, b) => (b.y + b.height > a.y + a.height ? b : a));
   return slideDown(
-    { x: lowest.x, y: lowest.y + lowest.height + GAP_Y, width, height: ESTIMATED_NOTE_HEIGHT },
+    {
+      x: lowest.x,
+      y: lowest.y + lowest.height + GAP_Y,
+      width,
+      height: ESTIMATED_NOTE_HEIGHT,
+    },
     nodes,
   );
 }
@@ -298,6 +324,8 @@ const withoutHeight = (nodes: EditorNode[]) =>
 /** A workspace's state before its board is loaded (what's left of the previous one is reset). */
 const BLANK = {
   initialized: false,
+  propertiesPosition: "top",
+  inlineLabels: "both",
   deletedTitles: {},
   viewport: null,
   nodes: [],
@@ -366,13 +394,18 @@ export const useCanvasStore = create<CanvasState>()(
           };
         }),
       addNode: (position) => {
-        const note = createNote({ title: nextNoteTitle(get().nodes), position });
+        const note = createNote({
+          title: nextNoteTitle(get().nodes),
+          position,
+        });
         set((s) => ({ nodes: [...s.nodes, note] }));
         return note.id;
       },
       settingsOpen: false,
       setSettingsOpen: (open) =>
-        set((s) => ({ settingsOpen: typeof open === "function" ? open(s.settingsOpen) : open })),
+        set((s) => ({
+          settingsOpen: typeof open === "function" ? open(s.settingsOpen) : open,
+        })),
       settingsTab: "fields",
       setSettingsTab: (settingsTab) => set({ settingsTab }),
       createNoteBeside: (sourceId, title) => {
@@ -422,6 +455,8 @@ export const useCanvasStore = create<CanvasState>()(
       setHoveredMention: (hoveredMention) => set({ hoveredMention }),
       setHighlight: (highlight) => set({ highlight }),
       setViewport: (viewport) => set({ viewport }),
+      setPropertiesPosition: (propertiesPosition) => set({ propertiesPosition }),
+      setInlineLabels: (inlineLabels) => set({ inlineLabels }),
 
       loadBoard: ({ nodes, fields, schemas, customIcons }) =>
         set({
@@ -463,7 +498,10 @@ export const useCanvasStore = create<CanvasState>()(
                     ...n,
                     data: {
                       ...n.data,
-                      fields: { ...n.data.fields, [fieldId]: conformValue(field, value) },
+                      fields: {
+                        ...n.data.fields,
+                        [fieldId]: conformValue(field, value),
+                      },
                     },
                   }
                 : n,
@@ -510,7 +548,13 @@ export const useCanvasStore = create<CanvasState>()(
             schemas: upsertById(s.schemas, schema),
             nodes: s.nodes.map((n) =>
               n.data.schemaId === schema.id
-                ? { ...n, data: { ...n.data, fields: fieldsFor(schema, s.fields, n.data.fields) } }
+                ? {
+                    ...n,
+                    data: {
+                      ...n.data,
+                      fields: fieldsFor(schema, s.fields, n.data.fields),
+                    },
+                  }
                 : n,
             ),
           };
@@ -535,7 +579,10 @@ export const useCanvasStore = create<CanvasState>()(
             fields: s.fields.map((f): FieldDef => {
               const field = f.icon === ref ? { ...f, icon: undefined } : f;
               return field.type === "icon" && field.defaultValue.includes(ref)
-                ? { ...field, defaultValue: field.defaultValue.filter((v) => v !== ref) }
+                ? {
+                    ...field,
+                    defaultValue: field.defaultValue.filter((v) => v !== ref),
+                  }
                 : field;
             }),
             nodes: s.nodes.map((n) => {
@@ -551,7 +598,11 @@ export const useCanvasStore = create<CanvasState>()(
               );
               return {
                 ...n,
-                data: { ...n.data, icon: n.data.icon === ref ? null : n.data.icon, fields },
+                data: {
+                  ...n.data,
+                  icon: n.data.icon === ref ? null : n.data.icon,
+                  fields,
+                },
               };
             }),
           };
@@ -570,6 +621,8 @@ export const useCanvasStore = create<CanvasState>()(
         schemas: s.schemas,
         customIcons: s.customIcons,
         deletedTitles: s.deletedTitles,
+        propertiesPosition: s.propertiesPosition,
+        inlineLabels: s.inlineLabels,
       }),
     },
   ),

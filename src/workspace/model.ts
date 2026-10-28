@@ -114,15 +114,16 @@ export const NOTE_COLORS = Object.keys(NOTE_COLOR_CLASSES) as NoteColor[];
 type FieldBase = {
   id: string;
   name: string;
-  /** Holds a list of values instead of one (for selects: multi-select instead of single-select). */
-  multiple: boolean;
   /** Can't be left empty; new notes start with `defaultValue`. */
   required: boolean;
   /** Unset means the type's icon (see `fieldIcon`). */
   icon?: IconRef;
 };
 
-/** Fields of one type: their default holds that type's values; selects also list their options. */
+/**
+ * Fields of one type: their default holds that type's values. Selects also list their options,
+ * and are the only fields that can hold several values (multi-select); the others hold one.
+ */
 type FieldDefOf<T extends FieldType> = FieldBase & {
   type: T;
   /** Initial value for required fields (non-empty). Optional fields start empty. */
@@ -134,6 +135,8 @@ type FieldDefOf<T extends FieldType> = FieldBase & {
          * searching; notes created from the picker are added here.
          */
         optionIds: NoteId[];
+        /** Multi-select (a list of notes) rather than single-select. */
+        multiple: boolean;
       }
     : unknown);
 
@@ -141,12 +144,20 @@ type FieldDefOf<T extends FieldType> = FieldBase & {
 export type FieldDef = { [T in FieldType]: FieldDefOf<T> }[FieldType];
 export type SelectFieldDef = FieldDefOf<"select">;
 
+/** Whether the field holds a list of values: only multi-selects do. */
+export const isMultiple = (field: FieldDef) => field.type === "select" && field.multiple;
+
 /** The same field as another type (its default no longer applies, so it's cleared). */
 export function withFieldType(field: FieldDef, type: FieldType): FieldDef {
-  const { id, name, multiple, required, icon } = field;
-  const base = { id, name, multiple, required, icon, defaultValue: [] };
+  const { id, name, required, icon } = field;
+  const base = { id, name, required, icon, defaultValue: [] };
   return type === "select"
-    ? { ...base, type, optionIds: field.type === "select" ? field.optionIds : [] }
+    ? {
+        ...base,
+        type,
+        optionIds: field.type === "select" ? field.optionIds : [],
+        multiple: field.type === "select" && field.multiple,
+      }
     : ({ ...base, type } as FieldDef);
 }
 
@@ -234,7 +245,7 @@ export const initialValue = (field: FieldDef): FieldValue =>
 /** Brings an existing value in line with a field's (possibly changed) rules. */
 export function conformValue(field: FieldDef, value: FieldValue | undefined): FieldValue {
   let next = value ?? [];
-  if (!field.multiple) next = next.slice(0, 1);
+  if (!isMultiple(field)) next = next.slice(0, 1);
   if (field.required && next.length === 0) next = [...field.defaultValue];
   return next;
 }
@@ -246,8 +257,8 @@ export function validateField(field: FieldDef): string[] {
   if (field.required && field.defaultValue.length === 0) {
     errors.push("Mandatory fields need a default value.");
   }
-  if (!field.multiple && field.defaultValue.length > 1) {
-    errors.push("A single-value field can only have one default.");
+  if (!isMultiple(field) && field.defaultValue.length > 1) {
+    errors.push("Only a multi-select can have more than one default.");
   }
   return errors;
 }
@@ -258,10 +269,13 @@ export function parseAtom(type: FieldType, input: string): FieldAtom | null {
   return s ? FIELD_TYPE_SPECS[type].parse(s) : null;
 }
 
-const dateFormat = new Intl.DateTimeFormat(undefined, { dateStyle: "medium" });
-const dateTimeFormat = new Intl.DateTimeFormat(undefined, {
-  dateStyle: "medium",
-  timeStyle: "short",
+// Dates read "MMM dd, YYYY" (e.g. "Mar 05, 2027") whatever the browser's locale.
+const DATE_PARTS = { month: "short", day: "2-digit", year: "numeric" } as const;
+const dateFormat = new Intl.DateTimeFormat("en-US", DATE_PARTS);
+const dateTimeFormat = new Intl.DateTimeFormat("en-US", {
+  ...DATE_PARTS,
+  hour: "numeric",
+  minute: "2-digit",
 });
 
 /** Human-readable form of a date/datetime atom (stored as local `YYYY-MM-DD[THH:mm]`). */

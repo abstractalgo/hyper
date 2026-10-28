@@ -7,6 +7,7 @@ import { FieldIcon, FieldTypeIcon } from "../icons";
 import {
   FIELD_TYPE_SPECS,
   FIELD_TYPES,
+  isMultiple,
   validateField,
   withFieldType,
   type FieldDef,
@@ -35,7 +36,6 @@ const blankField = (): FieldDef => ({
   id: newId(),
   name: "",
   type: "text",
-  multiple: false,
   required: false,
   defaultValue: [],
 });
@@ -69,8 +69,8 @@ function FieldForm({ initial, isNew, onSaved, onDeleted }: ItemFormProps<FieldDe
   const inUse = !isNew && isFieldInUse(nodes, draft.id);
   const usedBy = schemas.filter((sc) => sc.fieldIds.includes(draft.id));
   const errors = validateField(draft);
-  // Name, icon, cardinality and mandatory are the same for every field type.
-  const update = (patch: Partial<Pick<FieldDef, "name" | "icon" | "multiple" | "required">>) =>
+  // Name, icon and mandatory are the same for every field type.
+  const update = (patch: Partial<Pick<FieldDef, "name" | "icon" | "required">>) =>
     setDraft((d) => ({ ...d, ...patch }));
   // The default's type follows the field's type; trimming or clearing it keeps that.
   const updateDefault = (keep: (value: FieldDef["defaultValue"]) => typeof value) =>
@@ -108,7 +108,7 @@ function FieldForm({ initial, isNew, onSaved, onDeleted }: ItemFormProps<FieldDe
           className={textInputClass}
         />
       </FormRow>
-      <FormRow label="Icon" hint={draft.icon ? undefined : "Using the type's icon."}>
+      <FormRow label="Icon">
         <div className="flex items-center gap-2">
           <IconPicker
             label="Choose icon"
@@ -152,31 +152,36 @@ function FieldForm({ initial, isNew, onSaved, onDeleted }: ItemFormProps<FieldDe
           <OptionsEditor field={draft} onChange={setDraft} />
         </FormRow>
       )}
-      <FormRow label="Values">
-        <div className="flex gap-4 text-sm">
-          {[false, true].map((multiple) => (
-            <label key={String(multiple)} className="flex items-center gap-1.5">
-              <input
-                type="radio"
-                name="multiple"
-                checked={draft.multiple === multiple}
-                onChange={() => {
-                  update({ multiple });
-                  if (!multiple) updateDefault((v) => v.slice(0, 1));
-                }}
-              />
-              {draft.type === "select"
-                ? multiple
-                  ? "Multi-select"
-                  : "Single-select"
-                : multiple
-                  ? "Multiple values"
-                  : "Single value"}
-            </label>
-          ))}
-        </div>
-      </FormRow>
+      {/* Only selects can hold several values; every other type holds one. */}
+      {draft.type === "select" && (
+        <FormRow label="Values">
+          <div className="flex gap-4 text-sm">
+            {[false, true].map((multiple) => (
+              <label key={String(multiple)} className="flex items-center gap-1.5">
+                <input
+                  type="radio"
+                  name="multiple"
+                  checked={draft.multiple === multiple}
+                  onChange={() =>
+                    setDraft((d) =>
+                      d.type === "select"
+                        ? {
+                            ...d,
+                            multiple,
+                            defaultValue: multiple ? d.defaultValue : d.defaultValue.slice(0, 1),
+                          }
+                        : d,
+                    )
+                  }
+                />
+                {multiple ? "Multi-select" : "Single-select"}
+              </label>
+            ))}
+          </div>
+        </FormRow>
+      )}
       <FormRow label="Mandatory">
+        {/* oxlint-disable-next-line jsx-a11y/label-has-associated-control */}
         <label className="flex items-center gap-1.5 text-sm">
           <input
             type="checkbox"
@@ -186,12 +191,11 @@ function FieldForm({ initial, isNew, onSaved, onDeleted }: ItemFormProps<FieldDe
               if (!e.target.checked) updateDefault((v) => v.slice(0, 0));
             }}
           />
-          Every note must have a value
         </label>
       </FormRow>
       {draft.required && (
         <FormRow
-          label={draft.multiple ? "Default values" : "Default value"}
+          label={isMultiple(draft) ? "Default values" : "Default value"}
           hint="Given to new notes."
         >
           <div className="rounded border border-gray-300 px-1 py-0.5">
@@ -203,13 +207,6 @@ function FieldForm({ initial, isNew, onSaved, onDeleted }: ItemFormProps<FieldDe
               allowEmpty
             />
           </div>
-        </FormRow>
-      )}
-      {!isNew && (
-        <FormRow label="Used by">
-          <p className="text-sm text-gray-600">
-            {usedBy.length > 0 ? usedBy.map((sc) => sc.name).join(", ") : "No schemas yet"}
-          </p>
         </FormRow>
       )}
 

@@ -150,6 +150,10 @@ function InlineAtomInput({
         aria-label={field.name}
         placeholder={field.type === "image" ? "https://…" : "Empty"}
         value={draft ?? current}
+        // Empty pickers show nothing (not "yyyy-mm-dd" and an icon; see index.css), so a click
+        // opens the calendar rather than focusing a blank date segment.
+        data-empty={isPicker && current === "" ? "" : undefined}
+        onClick={(e) => isPicker && current === "" && e.currentTarget.showPicker()}
         onChange={(e) => (isPicker ? commit(e.target.value) : setDraft(e.target.value))}
         onBlur={(e) => !isPicker && commit(e.target.value)}
         onKeyDown={(e) => {

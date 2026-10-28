@@ -39,6 +39,15 @@ input[type="date"]:is(:hover, :focus)::-webkit-calendar-picker-indicator,
 input[type="datetime-local"]:is(:hover, :focus)::-webkit-calendar-picker-indicator {
   @apply opacity-60;
 }
+/* Empty pickers are blank, like other empty values: no "yyyy-mm-dd" and no icon until focused */
+input:is([type="date"], [type="datetime-local"])[data-empty]:not(:focus) {
+  @apply text-transparent;
+}
+input:is([type="date"], [type="datetime-local"])[data-empty]:not(
+    :focus
+  )::-webkit-calendar-picker-indicator {
+  @apply opacity-0;
+}
 
 /* Note handles: anchors for @mention edges, not interactive */
 .react-flow__handle.note-handle {

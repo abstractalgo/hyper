@@ -135,11 +135,10 @@ export function SelectEditor({
         // still gets its padding.
         className="-ml-1 flex min-h-6 w-full min-w-0 flex-wrap items-center gap-1 rounded px-1 py-0.5 text-left hover:bg-gray-100"
       >
-        {value.length > 0 ? (
-          value.map((id) => <NotePill key={id} noteId={id} />)
-        ) : (
-          <span className="text-xs text-gray-400">Empty</span>
-        )}
+        {/* Blank when empty; the row still shows its hover background. */}
+        {value.map((id) => (
+          <NotePill key={id} noteId={id} />
+        ))}
       </Popover.Trigger>
       <Popover.Portal container={container}>
         <Popover.Positioner sideOffset={2} align="start" className={POSITIONER_CLASS}>

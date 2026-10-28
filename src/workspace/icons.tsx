@@ -42,7 +42,15 @@ export function SchemaIcon({ schemaId, className = "" }: IconProps & { schemaId:
 }
 
 /** How a note is represented next to its title: a user's avatar if set, else its schema icon. */
-export function NoteIcon({ noteId, className = "" }: IconProps & { noteId: string }) {
+export function NoteIcon({
+  noteId,
+  className = "",
+  showPlain = true,
+}: IconProps & {
+  noteId: string;
+  /** Whether plain notes (no type) get the fallback sticky-note icon, or nothing. */
+  showPlain?: boolean;
+}) {
   const schemaId = useCanvasStore(
     (s) => s.nodes.find((n) => n.id === noteId)?.data.schemaId ?? null,
   );
@@ -57,5 +65,6 @@ export function NoteIcon({ noteId, className = "" }: IconProps & { noteId: strin
       <img src={avatar} alt="" className={`shrink-0 rounded-full object-cover ${className}`} />
     );
   }
+  if (schemaId === null && !showPlain) return null;
   return <SchemaIcon schemaId={schemaId} className={className} />;
 }

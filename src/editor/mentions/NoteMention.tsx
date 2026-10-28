@@ -67,7 +67,8 @@ export function NoteMention({ noteId }: { noteId: string }) {
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
-      <NoteIcon noteId={noteId} className="rte-mention-icon" />
+      {/* Plain notes have no icon of their own, so their mentions show just the title. */}
+      <NoteIcon noteId={noteId} className="rte-mention-icon" showPlain={false} />
       {title}
     </button>
   );

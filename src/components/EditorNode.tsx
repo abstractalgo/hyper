@@ -22,7 +22,13 @@ export const EditorNodeView = memo(function EditorNodeView({
 }: NodeProps<EditorNode>) {
   const updateNodeData = useCanvasStore((s) => s.updateNodeData);
   const setMentionAnchors = useCanvasStore((s) => s.setMentionAnchors);
-  const isMentionHovered = useCanvasStore((s) => s.hoveredMention?.targetId === id);
+  // Hovering a mention highlights its target; clicking an edge highlights both of its ends.
+  const isLinkHighlighted = useCanvasStore(
+    (s) =>
+      s.hoveredMention?.targetId === id ||
+      s.activeLink?.sourceId === id ||
+      s.activeLink?.targetId === id,
+  );
   // Matches what Canvas draws: an incoming edge exists when another note mentions this one.
   const hasIncoming = useCanvasStore((s) =>
     Object.entries(s.mentionAnchors).some(
@@ -55,7 +61,7 @@ export const EditorNodeView = memo(function EditorNodeView({
     <div
       ref={rootRef}
       className={`relative flex h-full w-full flex-col rounded-lg border bg-white shadow-sm ${
-        isMentionHovered
+        isLinkHighlighted
           ? "border-amber-400 ring-4 ring-amber-200"
           : selected
             ? "border-blue-500 ring-2 ring-blue-200"

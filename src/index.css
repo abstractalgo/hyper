@@ -20,8 +20,8 @@ body {
   @apply size-1.5 min-h-0 min-w-0 border-0 bg-gray-400;
 }
 
-/* The edge leading from a hovered @mention to its note */
-.react-flow__edge.mention-edge-hovered .react-flow__edge-path {
+/* The edge of a hovered @mention, or a clicked edge */
+.react-flow__edge.mention-edge-highlighted .react-flow__edge-path {
   @apply stroke-amber-500 stroke-2;
 }
 

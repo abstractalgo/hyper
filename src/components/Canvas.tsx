@@ -42,6 +42,7 @@ function useMentionEdges(): Edge[] {
   const nodeIds = useCanvasStore(useShallow((s) => s.nodes.map((n) => n.id)));
   const measured = useStore(measuredSourceHandles);
   const hovered = useCanvasStore((s) => s.hoveredMention);
+  const active = useCanvasStore((s) => s.activeLink);
 
   return useMemo(() => {
     const exists = new Set(nodeIds);
@@ -61,23 +62,22 @@ function useMentionEdges(): Edge[] {
               sourceHandle: a.handleId,
               target: a.targetId,
               targetHandle: TITLE_HANDLE_ID,
-              ...(hovered?.sourceId === source &&
-                hovered.handleId === a.handleId && {
-                  className: "mention-edge-hovered",
-                  zIndex: 1,
-                }),
+              ...([hovered, active].some(
+                (link) => link?.sourceId === source && link.handleId === a.handleId,
+              ) && { className: "mention-edge-highlighted", zIndex: 1 }),
             }))
         : [],
     );
-  }, [mentionAnchors, nodeIds, measured, hovered]);
+  }, [mentionAnchors, nodeIds, measured, hovered, active]);
 }
 
 export function Canvas() {
-  const { nodes, onNodesChange, addNode } = useCanvasStore(
+  const { nodes, onNodesChange, addNode, setActiveLink } = useCanvasStore(
     useShallow((s) => ({
       nodes: s.nodes,
       onNodesChange: s.onNodesChange,
       addNode: s.addNode,
+      setActiveLink: s.setActiveLink,
     })),
   );
   const edges = useMentionEdges();
@@ -98,6 +98,15 @@ export function Canvas() {
       nodeTypes={nodeTypes}
       onNodesChange={onNodesChange}
       onDoubleClick={handleDoubleClick}
+      onEdgeClick={(_, edge) =>
+        setActiveLink({
+          sourceId: edge.source,
+          handleId: edge.sourceHandle ?? "",
+          targetId: edge.target,
+        })
+      }
+      onPaneClick={() => setActiveLink(null)}
+      onNodeClick={() => setActiveLink(null)}
       zoomOnDoubleClick={false}
       // Edges only come from @mentions, so they can't be drawn, edited or selected by hand.
       nodesConnectable={false}

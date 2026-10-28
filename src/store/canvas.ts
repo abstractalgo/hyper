@@ -19,21 +19,25 @@ export type MentionAnchor = {
   y: number;
 };
 
-/** The `@mention` under the pointer: highlights its target note and the edge leading to it. */
-export type HoveredMention = { sourceId: string; handleId: string; targetId: string };
+/** One `@mention` link: the mentioning note, that mention's handle, and the mentioned note. */
+export type MentionLink = { sourceId: string; handleId: string; targetId: string };
 
 type CanvasState = {
   nodes: EditorNode[];
   /** Mention anchors per note ID. Edges are derived from these; there are no manual edges. */
   mentionAnchors: Record<string, MentionAnchor[]>;
-  hoveredMention: HoveredMention | null;
+  /** The `@mention` under the pointer: highlights its target note and its edge. */
+  hoveredMention: MentionLink | null;
+  /** The clicked edge: highlights it and the notes at both ends. */
+  activeLink: MentionLink | null;
   onNodesChange: (changes: NodeChange<EditorNode>[]) => void;
   addNode: (position: XYPosition) => void;
   /** Adds a note to the right of `sourceId`, below any notes already there. Returns its ID. */
   createNoteBeside: (sourceId: string, title: string) => string;
   updateNodeData: (id: string, data: Partial<EditorNodeData>) => void;
   setMentionAnchors: (id: string, anchors: MentionAnchor[]) => void;
-  setHoveredMention: (mention: HoveredMention | null) => void;
+  setHoveredMention: (mention: MentionLink | null) => void;
+  setActiveLink: (link: MentionLink | null) => void;
 };
 
 export const NOTE_WIDTH = 360;
@@ -92,13 +96,22 @@ export const useCanvasStore = create<CanvasState>()((set, get) => ({
   nodes: [],
   mentionAnchors: {},
   hoveredMention: null,
+  activeLink: null,
   onNodesChange: (changes) =>
     set((s) => {
       const removed = changes.flatMap((c) => (c.type === "remove" ? [c.id] : []));
       if (removed.length === 0) return { nodes: applyNodeChanges(changes, s.nodes) };
       const mentionAnchors = { ...s.mentionAnchors };
       for (const id of removed) delete mentionAnchors[id];
-      return { nodes: applyNodeChanges(changes, s.nodes), mentionAnchors };
+      const { activeLink } = s;
+      const linkRemoved =
+        activeLink &&
+        (removed.includes(activeLink.sourceId) || removed.includes(activeLink.targetId));
+      return {
+        nodes: applyNodeChanges(changes, s.nodes),
+        mentionAnchors,
+        ...(linkRemoved && { activeLink: null }),
+      };
     }),
   addNode: (position) =>
     set((s) => ({ nodes: [...s.nodes, createNote(`Note ${s.nodes.length + 1}`, position)] })),
@@ -115,6 +128,19 @@ export const useCanvasStore = create<CanvasState>()((set, get) => ({
       nodes: s.nodes.map((n) => (n.id === id ? { ...n, data: { ...n.data, ...data } } : n)),
     })),
   setMentionAnchors: (id, anchors) =>
-    set((s) => ({ mentionAnchors: { ...s.mentionAnchors, [id]: anchors } })),
+    set((s) => {
+      // Drop the active link once its mention is gone (deleted, or retyped to another note).
+      const { activeLink } = s;
+      const linkGone =
+        activeLink?.sourceId === id &&
+        !anchors.some(
+          (a) => a.handleId === activeLink.handleId && a.targetId === activeLink.targetId,
+        );
+      return {
+        mentionAnchors: { ...s.mentionAnchors, [id]: anchors },
+        ...(linkGone && { activeLink: null }),
+      };
+    }),
   setHoveredMention: (hoveredMention) => set({ hoveredMention }),
+  setActiveLink: (activeLink) => set({ activeLink }),
 }));

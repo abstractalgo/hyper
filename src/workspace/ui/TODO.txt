@@ -2,7 +2,6 @@ auto-increment for task IDs
 configurable custom layout rendering of schemas in nodes and @mentions
 type system with nodes (references)
   render links to nodes even on properties
-  nodes in properties are rendered per line, not inline
   hover in properties also highlights the nodes in the canvas
   hide certain nodes (and links) from canvas
 structural vs nominal vs templates
@@ -10,5 +9,6 @@ structural vs nominal vs templates
   are icons per schema type, or per node. are they a field or something different?
   utility types (pick, omit, union, intersect)
   collections (filters), schemas/types are filters/collections
+    table that enumerates all fields
 links have properties
 ref nodes and transclusion

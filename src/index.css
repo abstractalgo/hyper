@@ -57,10 +57,10 @@ input[type="datetime-local"]:is(:hover, :focus)::-webkit-calendar-picker-indicat
   @apply stroke-amber-500 stroke-2;
 }
 
-/* Invisible resize hit area on the bottom-right corner; only the cursor hints at it. */
+/* Invisible width-resize hit area on the bottom-right corner; only the cursor hints at it. */
 .react-flow__resize-control.note-resize-control {
   @apply size-3 border-0 bg-transparent;
-  cursor: nwse-resize;
+  cursor: ew-resize;
 }
 
 /* Lexical editor content */

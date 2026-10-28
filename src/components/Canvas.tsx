@@ -118,6 +118,10 @@ export function Canvas() {
       onPaneClick={() => setHighlight(null)}
       onNodeClick={() => setHighlight(null)}
       zoomOnDoubleClick={false}
+      // Two-finger trackpad scrolling pans; pinch (or Ctrl/Cmd + wheel) zooms. Speed 1 moves the
+      // canvas as far as the fingers move, like scrolling a page (React Flow's default is 0.5).
+      panOnScroll
+      panOnScrollSpeed={1}
       // Edges only come from @mentions, so they can't be drawn, edited or selected by hand.
       nodesConnectable={false}
       edgesFocusable={false}

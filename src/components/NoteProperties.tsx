@@ -24,9 +24,8 @@ export function NoteProperties({ noteId }: { noteId: string }) {
 
   return (
     <PopupContainerContext.Provider value={viewportPortal}>
-      {/* nodrag: using inputs shouldn't drag the note; local scroll: see useScrollWithoutPanning */}
+      {/* nodrag: using inputs shouldn't drag the note */}
       <dl
-        data-local-scroll
         className="nodrag grid shrink-0 grid-cols-[minmax(4rem,auto)_1fr] items-center gap-x-2 gap-y-0.5 border-b border-gray-100 px-3 py-1.5"
       >
         {fields.map((field) => (

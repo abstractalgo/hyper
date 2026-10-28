@@ -205,14 +205,17 @@ export const createNote = ({
 });
 
 /** Only what's worth saving: drops React Flow's runtime state (measured size, selection…). */
-const persistedNode = ({ id, type, position, width, height, data }: EditorNode): EditorNode => ({
+const persistedNode = ({ id, type, position, width, data }: EditorNode): EditorNode => ({
   id,
   type,
   position,
   width,
-  height,
   data,
 });
+
+/** Notes never have a fixed height (it always follows their content); resizing sets one. */
+const withoutHeight = (nodes: EditorNode[]) =>
+  nodes.map((n) => (n.height === undefined ? n : { ...n, height: undefined }));
 
 export const useCanvasStore = create<CanvasState>()(
   persist(
@@ -227,10 +230,10 @@ export const useCanvasStore = create<CanvasState>()(
       onNodesChange: (changes) =>
         set((s) => {
           const removed = changes.flatMap((c) => (c.type === "remove" ? [c.id] : []));
-          if (removed.length === 0) return { nodes: applyNodeChanges(changes, s.nodes) };
+          if (removed.length === 0) return { nodes: withoutHeight(applyNodeChanges(changes, s.nodes)) };
           const mentionAnchors = { ...s.mentionAnchors };
           for (const id of removed) delete mentionAnchors[id];
-          const nodes = applyNodeChanges(changes, s.nodes);
+          const nodes = withoutHeight(applyNodeChanges(changes, s.nodes));
           return {
             nodes,
             mentionAnchors,
@@ -374,7 +377,7 @@ export const useCanvasStore = create<CanvasState>()(
     }),
     {
       name: "hyper-board",
-      version: 4,
+      version: 5,
       migrate: (persisted, version) => {
         let state = persisted as Board & { initialized: boolean };
         // v2 added select/multi-select fields, which need `options` on every field.
@@ -388,6 +391,10 @@ export const useCanvasStore = create<CanvasState>()(
         // v4: ticket keys moved from title prefix to suffix.
         if (version < 4) {
           state = { ...state, ...ticketPrefixToSuffix(state) };
+        }
+        // v5: notes no longer have a fixed height (no scrolling inside notes).
+        if (version < 5) {
+          state = { ...state, nodes: withoutHeight(state.nodes) };
         }
         return state as CanvasState;
       },

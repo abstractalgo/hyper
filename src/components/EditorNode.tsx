@@ -13,7 +13,6 @@ import { NoteProperties } from "./NoteProperties.tsx";
 import { NoteSchemaMenu } from "./NoteSchemaMenu.tsx";
 import { NoteTitle } from "./NoteTitle.tsx";
 import { useMentionAnchors } from "./useMentionAnchors.ts";
-import { useScrollWithoutPanning } from "./useScrollWithoutPanning.ts";
 
 /** Every note receives incoming mention edges on this handle, level with its title. */
 export const TITLE_HANDLE_ID = "title";
@@ -37,8 +36,7 @@ export const EditorNodeView = memo(function EditorNodeView({
   const updateNodeInternals = useUpdateNodeInternals();
   const rootRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
-  const { anchors, minHeight } = useMentionAnchors(rootRef, contentRef);
-  useScrollWithoutPanning(rootRef);
+  const anchors = useMentionAnchors(rootRef, contentRef);
 
   // Handles moved, appeared or disappeared: have React Flow re-measure them, and publish the
   // anchors that edges are derived from (Canvas waits for the measurement before drawing).
@@ -64,7 +62,7 @@ export const EditorNodeView = memo(function EditorNodeView({
   return (
     <div
       ref={rootRef}
-      className={`relative flex h-full w-full flex-col rounded-lg border bg-white shadow-sm ${
+      className={`relative flex w-full flex-col rounded-lg border bg-white shadow-sm ${
         highlighted
           ? "border-amber-400 ring-4 ring-amber-200"
           : selected
@@ -92,12 +90,8 @@ export const EditorNodeView = memo(function EditorNodeView({
         />
       </div>
       <NoteProperties noteId={id} />
-      {/* nodrag: selecting text shouldn't drag the note (scrolling: useScrollWithoutPanning) */}
-      <div
-        ref={contentRef}
-        data-local-scroll
-        className="nodrag min-h-0 flex-1 cursor-text overflow-y-auto"
-      >
+      {/* nodrag: selecting text shouldn't drag the note. No overflow: notes grow with content. */}
+      <div ref={contentRef} className="nodrag cursor-text">
         <RichTextEditor noteId={id} initialContent={data.content} onChange={handleChange} />
       </div>
       {anchors.map((anchor) => (
@@ -111,10 +105,11 @@ export const EditorNodeView = memo(function EditorNodeView({
           style={{ top: anchor.y }}
         />
       ))}
+      {/* Width only: the height always follows the content. */}
       <NodeResizeControl
         position="bottom-right"
+        resizeDirection="horizontal"
         minWidth={240}
-        minHeight={minHeight}
         className="note-resize-control"
       />
     </div>

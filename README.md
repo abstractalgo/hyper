@@ -11,8 +11,10 @@ they get structured fields: status, assignee, dates, labels, and anything else y
 ### Write on an infinite canvas
 
 - **Double-click anywhere empty** to create a note right there.
-- Pan, scroll-zoom, or pinch-zoom (also over a note's text). Zoom far out to see a whole board.
-- Drag notes by their title bar; resize them from the bottom-right corner.
+- Scroll with two fingers to pan; pinch (or `Ctrl/Cmd` + wheel) to zoom, anywhere, including over notes.
+  Zoom far out to see a whole board.
+- Drag notes by their title bar; drag the bottom-right corner to make a note wider or narrower.
+  Notes always grow to fit their content, so nothing is ever hidden behind a scrollbar.
 - **Double-click a title to rename** a note. Every mention of it updates instantly.
 
 ### Format with Markdown shortcuts

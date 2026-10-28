@@ -18,12 +18,6 @@ export function locateMention(el: Element): { sourceId: string; handleId: string
   return index < 0 ? null : { sourceId, handleId: mentionHandleId(index) };
 }
 
-/** Smallest height a note can be resized to, mentions or not. */
-export const MIN_NOTE_HEIGHT = 120;
-
-/** Space kept below the lowest mention: the editor's bottom padding plus the note's border. */
-const BOTTOM_CLEARANCE = 12;
-
 const sameAnchors = (a: MentionAnchor[], b: MentionAnchor[]) =>
   a.length === b.length &&
   a.every(
@@ -34,18 +28,13 @@ const sameAnchors = (a: MentionAnchor[], b: MentionAnchor[]) =>
  * Tracks the vertical position of every `@mention` inside a note.
  *
  * Re-measures whenever the editor DOM changes (typing, mentions moving, a mentioned note
- * being renamed), the note is resized, or its content is scrolled. Mentions scrolled out
- * of view are pinned to the top/bottom of the visible content area.
- *
- * Also returns the minimum height that keeps the lowest mention (and so its handle)
- * inside the note without scrolling.
+ * being renamed) or the note is resized (text re-wraps).
  */
 export function useMentionAnchors(
   rootRef: RefObject<HTMLElement | null>,
   contentRef: RefObject<HTMLElement | null>,
-): { anchors: MentionAnchor[]; minHeight: number } {
+): MentionAnchor[] {
   const [anchors, setAnchors] = useState<MentionAnchor[]>([]);
-  const [minHeight, setMinHeight] = useState(MIN_NOTE_HEIGHT);
   const store = useStoreApi();
 
   useLayoutEffect(() => {
@@ -59,20 +48,12 @@ export function useMentionAnchors(
       // Client rects are scaled by the viewport zoom; handles are positioned in flow pixels.
       const zoom = store.getState().transform[2];
       // Absolutely positioned handles are offset from the padding box, inside the border.
-      const rootRect = root.getBoundingClientRect();
-      const rootTop = rootRect.top + root.clientTop * zoom;
-      const view = content.getBoundingClientRect();
-      let lowestBottom = 0;
+      const rootTop = root.getBoundingClientRect().top + root.clientTop * zoom;
       const next = Array.from(
         content.querySelectorAll<HTMLElement>(`[${MENTION_TARGET_ATTR}]`),
         (el, i): MentionAnchor => {
           const rect = el.getBoundingClientRect();
-          // Unscrolled position, measured from the note's outer edge (node height includes the border).
-          lowestBottom = Math.max(
-            lowestBottom,
-            (rect.bottom - rootRect.top) / zoom + content.scrollTop,
-          );
-          const mid = Math.min(Math.max(rect.top + rect.height / 2, view.top), view.bottom);
+          const mid = rect.top + rect.height / 2;
           return {
             handleId: mentionHandleId(i),
             targetId: el.getAttribute(MENTION_TARGET_ATTR)!,
@@ -81,7 +62,6 @@ export function useMentionAnchors(
         },
       );
       setAnchors((prev) => (sameAnchors(prev, next) ? prev : next));
-      setMinHeight(Math.max(MIN_NOTE_HEIGHT, Math.ceil(lowestBottom + BOTTOM_CLEARANCE)));
     };
     const schedule = () => {
       if (!frame) frame = requestAnimationFrame(measure);
@@ -96,16 +76,14 @@ export function useMentionAnchors(
     });
     const resizes = new ResizeObserver(schedule);
     resizes.observe(root);
-    content.addEventListener("scroll", schedule, { passive: true });
     schedule();
 
     return () => {
       cancelAnimationFrame(frame);
       mutations.disconnect();
       resizes.disconnect();
-      content.removeEventListener("scroll", schedule);
     };
   }, [rootRef, contentRef, store]);
 
-  return { anchors, minHeight };
+  return anchors;
 }

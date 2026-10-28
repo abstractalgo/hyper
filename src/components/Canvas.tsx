@@ -12,7 +12,11 @@ import {
 import { useMemo, type MouseEvent } from "react";
 import { useShallow } from "zustand/react/shallow";
 
-import { isLinkHighlighted, NOTE_WIDTH, useCanvasStore } from "../store/canvas.ts";
+import {
+  isLinkHighlighted,
+  NOTE_WIDTH,
+  useCanvasStore,
+} from "../store/canvas.ts";
 import { EditorNodeView, TITLE_HANDLE_ID } from "./EditorNode.tsx";
 
 const nodeTypes: NodeTypes = { editor: EditorNodeView };
@@ -64,7 +68,11 @@ function useMentionEdges(): Edge[] {
               targetHandle: TITLE_HANDLE_ID,
               ...(isLinkHighlighted(
                 { hoveredMention, highlight },
-                { sourceId: source, handleId: a.handleId, targetId: a.targetId },
+                {
+                  sourceId: source,
+                  handleId: a.handleId,
+                  targetId: a.targetId,
+                },
               ) && { className: "mention-edge-highlighted", zIndex: 1 }),
             }))
         : [],
@@ -87,7 +95,11 @@ export function Canvas() {
   // Double-clicking empty canvas (the pane itself, not a note or control) adds a note there,
   // with its title bar centered under the cursor.
   const handleDoubleClick = (e: MouseEvent) => {
-    if (!(e.target instanceof Element) || !e.target.classList.contains("react-flow__pane")) return;
+    if (
+      !(e.target instanceof Element) ||
+      !e.target.classList.contains("react-flow__pane")
+    )
+      return;
     const { x, y } = screenToFlowPosition({ x: e.clientX, y: e.clientY });
     addNode({ x: x - NOTE_WIDTH / 2, y: y - TITLE_BAR_HEIGHT / 2 });
   };
@@ -102,7 +114,11 @@ export function Canvas() {
       onEdgeClick={(_, edge) =>
         setHighlight({
           kind: "link",
-          link: { sourceId: edge.source, handleId: edge.sourceHandle ?? "", targetId: edge.target },
+          link: {
+            sourceId: edge.source,
+            handleId: edge.sourceHandle ?? "",
+            targetId: edge.target,
+          },
         })
       }
       onPaneClick={() => setHighlight(null)}
@@ -112,6 +128,7 @@ export function Canvas() {
       nodesConnectable={false}
       edgesFocusable={false}
       edgesReconnectable={false}
+      minZoom={0.1}
       fitView
       fitViewOptions={{ maxZoom: 1 }}
     >

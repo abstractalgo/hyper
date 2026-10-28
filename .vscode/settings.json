@@ -1,0 +1,20 @@
+{
+  "js/ts.tsdk.path": "./node_modules/typescript/lib",
+  "js/ts.updateImportsOnFileMove.enabled": "always",
+  "[javascript][typescript][typescriptreact][json][html][javascriptreact][css][jsonc]": {
+    "editor.formatOnSave": true,
+    "editor.defaultFormatter": "oxc.oxc-vscode"
+  },
+  "editor.codeActionsOnSave": {
+    "source.fixAll.oxc": "explicit",
+    "source.removeUnusedImports": "explicit"
+  },
+  "package-json-upgrade.minimumReleaseAge": 1440, // based on `npmMinimalAgeGate` in .yarnrc.yml
+  // "oxc.path.node": "$HOME/.nvm/versions/node/v24.11.0/bin/node",
+  "githubPullRequests.commentExpandState": "collapseAll",
+  "oxc.fixKind": "safe_fix",
+  "prettier.enable": false,
+  "eslint.enable": false,
+  "oxc.enable": true,
+  "oxc.typeAware": true
+}

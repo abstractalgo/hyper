@@ -1,0 +1,8 @@
+{
+  "recommendations": [
+    "oxc.oxc-vscode",
+    "GitHub.vscode-pull-request-github",
+    "codeandstuff.package-json-upgrade"
+    // "webpro.vscode-knip"
+  ]
+}

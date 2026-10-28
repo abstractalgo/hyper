@@ -12,8 +12,9 @@ import { OnChangePlugin } from "@lexical/react/LexicalOnChangePlugin";
 import { RichTextPlugin } from "@lexical/react/LexicalRichTextPlugin";
 import { TabIndentationPlugin } from "@lexical/react/LexicalTabIndentationPlugin";
 import type { EditorState } from "lexical";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
+import { fixChecklistZoom } from "./checklistZoom";
 import { EquationsPlugin } from "./equations/EquationsPlugin";
 import { MARKDOWN_TRANSFORMERS } from "./markdown";
 import { MentionsPlugin } from "./mentions/MentionsPlugin";
@@ -47,13 +48,16 @@ export function RichTextEditor({
     },
   }));
 
+  const containerRef = useRef<HTMLDivElement>(null);
+  useEffect(() => fixChecklistZoom(containerRef.current!), []);
+
   const handleChange = (editorState: EditorState) => {
     onChange(JSON.stringify(editorState.toJSON()));
   };
 
   return (
     <LexicalComposer initialConfig={initialConfig}>
-      <div className="relative">
+      <div ref={containerRef} className="relative">
         <RichTextPlugin
           contentEditable={
             <ContentEditable

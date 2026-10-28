@@ -101,26 +101,25 @@ input[type="datetime-local"]:is(:hover, :focus)::-webkit-calendar-picker-indicat
 .rte-checklist {
   @apply my-2.5 pl-0 first:mt-0 last:mb-0;
 }
-/* CheckListPlugin toggles an item when its left padding (where ::before sits) is clicked */
+/* CheckListPlugin toggles an item when its ::before box is clicked (see checklistZoom.ts) */
 .rte-listitem-checked,
 .rte-listitem-unchecked {
   @apply relative list-none pl-6 outline-none;
 }
 .rte-listitem-checked::before,
 .rte-listitem-unchecked::before {
-  @apply absolute top-[0.2em] left-0 size-4 cursor-pointer rounded-[3px] border border-gray-300 bg-white content-[''];
+  @apply absolute top-0.5 left-0 size-4 cursor-pointer rounded-[3px] border border-gray-300 bg-white bg-center bg-no-repeat content-[''];
 }
 .rte-listitem-checked {
   @apply text-gray-400 line-through;
 }
+/* The check mark is part of the box, so it can't drift out of it */
 .rte-listitem-checked::before {
   @apply border-gray-900 bg-gray-900;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E");
+  background-size: 12px;
 }
-.rte-listitem-checked::after {
-  @apply pointer-events-none absolute top-[0.35em] left-[0.35rem] h-2 w-1 rotate-45 border-r-2 border-b-2 border-white content-[''];
-}
-.rte-nested-listitem::before,
-.rte-nested-listitem::after {
+.rte-nested-listitem::before {
   @apply hidden;
 }
 /* Like Notion's page mentions: body-colored text with a faint underline, not a colored chip */

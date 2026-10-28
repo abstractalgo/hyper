@@ -6,7 +6,7 @@ import {
   type TriggerFn,
 } from "@lexical/react/LexicalTypeaheadMenuPlugin";
 import { go as fuzzySearch, highlight as fuzzyHighlight } from "fuzzysort";
-import { $createTextNode, type TextNode } from "lexical";
+import type { TextNode } from "lexical";
 import { useMemo, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 
@@ -153,9 +153,8 @@ export function MentionsPlugin({ noteId }: MentionsPluginProps) {
     editor.update(() => {
       const mention = $createNoteMentionNode(targetId);
       if (nodeToReplace) nodeToReplace.replace(mention);
-      const space = $createTextNode(" ");
-      mention.insertAfter(space);
-      space.select(1, 1);
+      // Caret right after the mention, so punctuation can follow it directly.
+      mention.selectNext();
       closeMenu();
     });
   };

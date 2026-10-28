@@ -1705,6 +1705,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"fuzzysort@npm:^4.0.2":
+  version: 4.0.2
+  resolution: "fuzzysort@npm:4.0.2"
+  checksum: 10c0/418b59d2ba8d84127e57b6ef7873addc0cb7fdf7610a58e8df4f2a42c1fe552811e51f23be350d81a0560c2dfe563500cf0d75161682c063cd798f7b36334827
+  languageName: node
+  linkType: hard
+
 "graceful-fs@npm:^4.2.4, graceful-fs@npm:^4.2.6":
   version: 4.2.11
   resolution: "graceful-fs@npm:4.2.11"
@@ -1747,6 +1754,7 @@ __metadata:
     "@types/react-dom": "npm:^19.3.0"
     "@vitejs/plugin-react": "npm:^6.1.2"
     "@xyflow/react": "npm:^12.12.0"
+    fuzzysort: "npm:^4.0.2"
     lexical: "npm:^0.52.0"
     oxfmt: "npm:~0.74.0"
     oxlint: "npm:~1.89.0"

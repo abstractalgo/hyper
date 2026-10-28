@@ -22,17 +22,23 @@ export const EditorNodeView = memo(function EditorNodeView({
 }: NodeProps<EditorNode>) {
   const updateNodeData = useCanvasStore((s) => s.updateNodeData);
   const setMentionAnchors = useCanvasStore((s) => s.setMentionAnchors);
+  // Matches what Canvas draws: an incoming edge exists when another note mentions this one.
+  const hasIncoming = useCanvasStore((s) =>
+    Object.entries(s.mentionAnchors).some(
+      ([sourceId, sourceAnchors]) =>
+        sourceId !== id && sourceAnchors.some((a) => a.targetId === id),
+    ),
+  );
   const updateNodeInternals = useUpdateNodeInternals();
   const rootRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const { anchors, minHeight } = useMentionAnchors(rootRef, contentRef);
 
-  // React Flow re-measures handles on the next frame; publish the anchors (and so the edges)
-  // in a frame queued after that, so edges never reference handles it hasn't measured yet.
+  // Handles moved, appeared or disappeared: have React Flow re-measure them, and publish the
+  // anchors that edges are derived from (Canvas waits for the measurement before drawing).
   useLayoutEffect(() => {
+    setMentionAnchors(id, anchors);
     updateNodeInternals(id);
-    const frame = requestAnimationFrame(() => setMentionAnchors(id, anchors));
-    return () => cancelAnimationFrame(frame);
   }, [id, anchors, updateNodeInternals, setMentionAnchors]);
 
   const handleChange = useCallback(
@@ -58,7 +64,8 @@ export const EditorNodeView = memo(function EditorNodeView({
           id={TITLE_HANDLE_ID}
           position={Position.Left}
           isConnectable={false}
-          className="note-handle"
+          // Hidden rather than unmounted, so it's already measured when the first edge arrives.
+          className={`note-handle ${hasIncoming ? "" : "invisible"}`}
         />
       </div>
       {/* nodrag/nowheel stop React Flow from hijacking text selection and scrolling */}

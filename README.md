@@ -95,7 +95,7 @@ they're mentioned.
 
 Your board, fields and types are saved in your browser automatically. The first time you open
 Hyper you get a sample project, _Ledgerly_, an expense app planned as an epic with tasks, a spike,
-a bug and a small team. **Reset to sample board** in settings brings it back at any time.
+a bug and a small team.
 
 ## Run it locally
 

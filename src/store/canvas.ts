@@ -1,4 +1,10 @@
-import { applyNodeChanges, type Node, type NodeChange, type XYPosition } from "@xyflow/react";
+import {
+  applyNodeChanges,
+  type Node,
+  type NodeChange,
+  type Viewport,
+  type XYPosition,
+} from "@xyflow/react";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 
@@ -51,6 +57,8 @@ export type Board = { nodes: EditorNode[]; fields: FieldDef[]; schemas: Schema[]
 type CanvasState = Board & {
   /** False until a board has been loaded (first visit, before the sample is seeded). */
   initialized: boolean;
+  /** Where the canvas was panned/zoomed to; null until the user first moves it. */
+  viewport: Viewport | null;
   /** Mention anchors per note ID. Edges are derived from these; there are no manual edges. */
   mentionAnchors: Record<string, MentionAnchor[]>;
   /** The `@mention` under the pointer: highlights its target note and its edge. */
@@ -75,6 +83,7 @@ type CanvasState = Board & {
   setMentionAnchors: (id: string, anchors: MentionAnchor[]) => void;
   setHoveredMention: (mention: MentionLink | null) => void;
   setHighlight: (highlight: Highlight | null) => void;
+  setViewport: (viewport: Viewport) => void;
 
   loadBoard: (board: Board) => void;
   setNoteSchema: (noteId: string, schemaId: string | null) => void;
@@ -252,6 +261,7 @@ export const useCanvasStore = create<CanvasState>()(
   persist(
     (set, get) => ({
       initialized: false,
+      viewport: null,
       nodes: [],
       fields: BUILT_IN_FIELDS,
       schemas: BUILT_IN_SCHEMAS,
@@ -348,6 +358,7 @@ export const useCanvasStore = create<CanvasState>()(
         }),
       setHoveredMention: (hoveredMention) => set({ hoveredMention }),
       setHighlight: (highlight) => set({ highlight }),
+      setViewport: (viewport) => set({ viewport }),
 
       loadBoard: ({ nodes, fields, schemas }) =>
         set({
@@ -464,6 +475,7 @@ export const useCanvasStore = create<CanvasState>()(
       storage: createJSONStorage(() => debouncedLocalStorage()),
       partialize: (s) => ({
         initialized: s.initialized,
+        viewport: s.viewport,
         nodes: s.nodes.map(persistedNode),
         fields: s.fields,
         schemas: s.schemas,

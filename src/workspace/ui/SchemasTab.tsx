@@ -11,8 +11,8 @@ import {
   EditorPane,
   FormRow,
   ListPane,
-  primaryButtonClass,
   textInputClass,
+  useAutoSave,
 } from "./settingsLayout.tsx";
 
 const blankSchema = (): Schema => ({
@@ -98,24 +98,24 @@ function SchemaForm({
     ids.splice(to, 0, id!);
     update({ fieldIds: ids });
   };
-  const removed = initial.fieldIds.filter((id) => !draft.fieldIds.includes(id));
   const nameError = draft.name.trim() ? null : "Name is required.";
 
-  const handleSave = () => {
-    if (nameError) return;
+  // Changes save as soon as the schema is valid; a new schema appears in the list then.
+  useAutoSave(draft, nameError === null, (d) => {
+    const schema = { ...d, name: d.name.trim() };
+    saveSchema(schema);
+    if (isNew) onSaved(schema);
+  });
+
+  // Saving is immediate, so confirm before a removal that deletes note values.
+  const removeField = (field: { id: string; name: string }) => {
     if (
-      !isNew &&
-      removed.length > 0 &&
       noteCount > 0 &&
-      !window.confirm(
-        `Removing ${removed.length} field(s) deletes their values from ${noteCount} note(s). Continue?`,
-      )
+      !window.confirm(`Removing “${field.name}” deletes its values from ${noteCount} note(s).`)
     ) {
       return;
     }
-    const schema = { ...draft, name: draft.name.trim() };
-    saveSchema(schema);
-    onSaved(schema);
+    update({ fieldIds: draft.fieldIds.filter((id) => id !== field.id) });
   };
 
   const handleDelete = () => {
@@ -131,13 +131,7 @@ function SchemaForm({
   };
 
   return (
-    <form
-      className="flex flex-col gap-3"
-      onSubmit={(e) => {
-        e.preventDefault();
-        handleSave();
-      }}
-    >
+    <form className="flex flex-col gap-3" onSubmit={(e) => e.preventDefault()}>
       <FormRow label="Name">
         <input
           aria-label="Schema name"
@@ -220,9 +214,7 @@ function SchemaForm({
                   aria-label={`Remove ${field.name}`}
                   disabled={locked}
                   title={locked ? "Built-in field of a built-in schema" : undefined}
-                  onClick={() =>
-                    update({ fieldIds: draft.fieldIds.filter((id) => id !== field.id) })
-                  }
+                  onClick={() => removeField(field)}
                   className="rounded p-1 text-gray-500 hover:bg-gray-100 disabled:opacity-30"
                 >
                   <XIcon className="size-3.5" />
@@ -256,16 +248,13 @@ function SchemaForm({
       )}
 
       {nameError && <p className="text-xs text-red-600">{nameError}</p>}
-      <div className="flex items-center gap-2 pt-1">
-        <button type="submit" disabled={nameError !== null} className={primaryButtonClass}>
-          {isNew ? "Create schema" : "Save schema"}
-        </button>
-        {!isNew && !draft.builtIn && (
+      {!isNew && !draft.builtIn && (
+        <div className="pt-1">
           <button type="button" onClick={handleDelete} className={dangerButtonClass}>
-            Delete
+            Delete schema
           </button>
-        )}
-      </div>
+        </div>
+      )}
     </form>
   );
 }

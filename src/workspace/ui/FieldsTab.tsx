@@ -21,8 +21,8 @@ import {
   EditorPane,
   FormRow,
   ListPane,
-  primaryButtonClass,
   textInputClass,
+  useAutoSave,
 } from "./settingsLayout.tsx";
 
 const blankField = (): FieldDef => ({
@@ -116,17 +116,15 @@ function FieldForm({
     }
   };
 
+  // Changes save as soon as the field is valid; a new field appears in the list then.
+  useAutoSave(draft, errors.length === 0, (d) => {
+    const field = { ...d, name: d.name.trim() };
+    saveField(field);
+    if (isNew) onSaved(field);
+  });
+
   return (
-    <form
-      className="flex flex-col gap-3"
-      onSubmit={(e) => {
-        e.preventDefault();
-        if (errors.length > 0) return;
-        const field = { ...draft, name: draft.name.trim() };
-        saveField(field);
-        onSaved(field);
-      }}
-    >
+    <form className="flex flex-col gap-3" onSubmit={(e) => e.preventDefault()}>
       <FormRow label="Name">
         <input
           aria-label="Field name"
@@ -259,16 +257,13 @@ function FieldForm({
           ))}
         </ul>
       )}
-      <div className="flex items-center gap-2 pt-1">
-        <button type="submit" disabled={errors.length > 0} className={primaryButtonClass}>
-          {isNew ? "Create field" : "Save field"}
-        </button>
-        {!isNew && !draft.builtIn && (
+      {!isNew && !draft.builtIn && (
+        <div className="pt-1">
           <button type="button" onClick={handleDelete} className={dangerButtonClass}>
-            Delete
+            Delete field
           </button>
-        )}
-      </div>
+        </div>
+      )}
     </form>
   );
 }

@@ -10,7 +10,7 @@ import {
   type NodeTypes,
   type ReactFlowState,
 } from "@xyflow/react";
-import { useMemo, type MouseEvent } from "react";
+import { useMemo, useState, type MouseEvent } from "react";
 import { useShallow } from "zustand/react/shallow";
 
 import { isLinkHighlighted, NOTE_WIDTH, useCanvasStore } from "../store/canvas.ts";
@@ -89,6 +89,9 @@ export function Canvas() {
   );
   const edges = useMentionEdges();
   const { screenToFlowPosition } = useReactFlow();
+  const setViewport = useCanvasStore((s) => s.setViewport);
+  // Only the viewport saved at load matters; React Flow owns it from then on.
+  const [savedViewport] = useState(() => useCanvasStore.getState().viewport);
 
   // Double-clicking empty canvas (the pane itself, not a note or control) adds a note there,
   // with its title bar centered under the cursor.
@@ -104,6 +107,10 @@ export function Canvas() {
       edges={edges}
       nodeTypes={nodeTypes}
       onNodesChange={onNodesChange}
+      // Restore the saved pan/zoom; save it again whenever a pan or zoom ends (a natural
+      // debounce: once per gesture, not per frame). Without a saved one, fit all notes.
+      defaultViewport={savedViewport ?? undefined}
+      onMoveEnd={(_, viewport) => setViewport(viewport)}
       onDoubleClick={handleDoubleClick}
       onEdgeClick={(_, edge) =>
         setHighlight({
@@ -127,7 +134,7 @@ export function Canvas() {
       edgesFocusable={false}
       edgesReconnectable={false}
       minZoom={0.1}
-      fitView
+      fitView={!savedViewport}
       fitViewOptions={{ maxZoom: 1 }}
     >
       <Background variant={BackgroundVariant.Dots} gap={16} />

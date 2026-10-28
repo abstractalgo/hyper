@@ -1,13 +1,9 @@
 import { PlusIcon } from "lucide-react";
-import type { ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, type ReactNode } from "react";
 
 export const textInputClass =
   "h-8 w-full rounded border border-gray-300 px-2 text-sm outline-none focus:border-blue-500";
-export const primaryButtonClass =
-  "h-8 rounded-md bg-gray-900 px-3 text-sm font-medium text-white hover:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-40";
 export const dangerButtonClass = "h-8 rounded-md px-3 text-sm text-red-600 hover:bg-red-50";
-export const secondaryButtonClass =
-  "h-8 rounded-md border border-gray-300 px-3 text-sm text-gray-700 hover:bg-gray-50";
 
 type ListItem = { id: string; label: string; detail?: string; icon?: ReactNode };
 
@@ -81,4 +77,20 @@ export function FormRow({
       </div>
     </div>
   );
+}
+
+/**
+ * Saves `draft` whenever it changes and is valid; settings forms have no Save button. The draft
+ * as first loaded isn't saved (nothing changed yet).
+ */
+export function useAutoSave<T>(draft: T, valid: boolean, save: (draft: T) => void) {
+  const initial = useRef(draft);
+  // Latest values, read by the effect so it only re-runs when the draft itself changes.
+  const latest = useRef({ valid, save });
+  useLayoutEffect(() => {
+    latest.current = { valid, save };
+  });
+  useEffect(() => {
+    if (draft !== initial.current && latest.current.valid) latest.current.save(draft);
+  }, [draft]);
 }

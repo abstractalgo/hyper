@@ -13,10 +13,16 @@ import {
 import { useMemo, useState, type MouseEvent } from "react";
 import { useShallow } from "zustand/react/shallow";
 
-import { isLinkHighlighted, NOTE_WIDTH, useCanvasStore } from "../store/canvas";
+import {
+  isLinkHighlighted,
+  linkSide,
+  NOTE_WIDTH,
+  oppositeSide,
+  useCanvasStore,
+} from "../store/canvas";
 import { SettingsDialog } from "../workspace/ui/SettingsDialog";
 import { CommandPalette } from "./CommandPalette";
-import { EditorNodeView, TITLE_HANDLE_ID } from "./EditorNode";
+import { EditorNodeView, TITLE_HANDLE_IDS } from "./EditorNode";
 
 const nodeTypes: NodeTypes = { editor: EditorNodeView };
 
@@ -42,13 +48,13 @@ const measuredSourceHandles = (s: ReactFlowState) => {
  */
 function useMentionEdges(): Edge[] {
   const mentionAnchors = useCanvasStore((s) => s.mentionAnchors);
-  const nodeIds = useCanvasStore(useShallow((s) => s.nodes.map((n) => n.id)));
+  const nodes = useCanvasStore((s) => s.nodes);
   const measured = useStore(measuredSourceHandles);
   const hoveredMention = useCanvasStore((s) => s.hoveredMention);
   const highlight = useCanvasStore((s) => s.highlight);
 
   return useMemo(() => {
-    const exists = new Set(nodeIds);
+    const exists = new Set(nodes.map((n) => n.id));
     const handles = new Set(measured.split("\n"));
     return Object.entries(mentionAnchors).flatMap(([source, anchors]) =>
       exists.has(source)
@@ -64,7 +70,8 @@ function useMentionEdges(): Edge[] {
               source,
               sourceHandle: a.handleId,
               target: a.targetId,
-              targetHandle: TITLE_HANDLE_ID,
+              // Leaves on the side facing the target, enters on the side facing the source.
+              targetHandle: TITLE_HANDLE_IDS[oppositeSide(linkSide(nodes, source, a.targetId))],
               ...(isLinkHighlighted(
                 { hoveredMention, highlight },
                 {
@@ -76,7 +83,7 @@ function useMentionEdges(): Edge[] {
             }))
         : [],
     );
-  }, [mentionAnchors, nodeIds, measured, hoveredMention, highlight]);
+  }, [mentionAnchors, nodes, measured, hoveredMention, highlight]);
 }
 
 export function Canvas() {

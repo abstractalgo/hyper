@@ -553,3 +553,24 @@ export function useNoteData<K extends keyof EditorNodeData>(
 ): EditorNodeData[K] | undefined {
   return useCanvasStore((s) => s.nodes.find((n) => n.id === noteId)?.data[key]);
 }
+
+/** A side of a note: where a link leaves the mentioning note, or enters the mentioned one. */
+export type LinkSide = "left" | "right";
+
+const centerX = (n: EditorNode) => n.position.x + (n.measured?.width ?? n.width ?? NOTE_WIDTH) / 2;
+
+/**
+ * Which side of the mentioning note a link leaves from: towards the mentioned note, by comparing
+ * the notes' horizontal centers. It enters the mentioned note on the opposite side.
+ */
+export function linkSide(
+  nodes: readonly EditorNode[],
+  sourceId: string,
+  targetId: string,
+): LinkSide {
+  const source = nodes.find((n) => n.id === sourceId);
+  const target = nodes.find((n) => n.id === targetId);
+  return source && target && centerX(target) < centerX(source) ? "left" : "right";
+}
+
+export const oppositeSide = (side: LinkSide): LinkSide => (side === "left" ? "right" : "left");

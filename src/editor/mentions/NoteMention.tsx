@@ -1,4 +1,5 @@
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
+import { StickyNoteOffIcon } from "lucide-react";
 import { $getSelection, $isNodeSelection, type LexicalEditor, type NodeKey } from "lexical";
 import { useEffect, useRef, useState, useSyncExternalStore, type MouseEvent } from "react";
 
@@ -39,6 +40,7 @@ export function NoteMention({ noteId, nodeKey }: { noteId: string; nodeKey: Node
   const [editor] = useLexicalComposerContext();
   const title = useNoteData(noteId, "title");
   const color = useNoteData(noteId, "color");
+  const deletedTitle = useCanvasStore((s) => s.deletedTitles[noteId]);
   const goToNote = useGoToNote();
   const setHoveredMention = useCanvasStore((s) => s.setHoveredMention);
   const ref = useRef<HTMLSpanElement>(null);
@@ -64,9 +66,11 @@ export function NoteMention({ noteId, nodeKey }: { noteId: string; nodeKey: Node
   };
 
   if (title === undefined) {
+    // The note was deleted: its last title (if remembered), faded, marked with a "no note" icon.
     return (
       <span className="rte-mention rte-mention-missing" title="This note was deleted">
-        deleted note
+        <StickyNoteOffIcon aria-hidden className="rte-mention-icon" />
+        {deletedTitle ?? "deleted note"}
       </span>
     );
   }

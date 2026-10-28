@@ -136,7 +136,7 @@ input:is([type="date"], [type="datetime-local"])[data-empty]:not(
   @apply cursor-pointer rounded-sm px-0.5 font-medium text-gray-900 underline decoration-gray-300 decoration-1 underline-offset-[3px];
 }
 /* Hovered, or selected as a whole (the caret on it): the same look */
-.rte-mention:not(.rte-mention-colored):is(:hover, .rte-mention-selected) {
+.rte-mention:not(.rte-mention-colored, .rte-mention-missing):is(:hover, .rte-mention-selected) {
   @apply bg-gray-100 decoration-gray-500;
 }
 /* Mentions of a colored note take its color as background (and tinted text) instead */
@@ -150,8 +150,9 @@ input:is([type="date"], [type="datetime-local"])[data-empty]:not(
 .rte-mention-icon {
   @apply mr-1 inline-block size-[1em] align-[-0.125em];
 }
-.rte-mention-missing {
-  @apply cursor-default text-gray-400 line-through hover:bg-transparent;
+/* A deleted note: faded, with a dashed underline (a link that leads nowhere) */
+.rte-mention.rte-mention-missing {
+  @apply cursor-default bg-transparent font-normal text-gray-400 decoration-gray-300 decoration-dashed;
 }
 .rte-link {
   @apply text-blue-600 underline underline-offset-2;

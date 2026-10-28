@@ -71,6 +71,11 @@ type CanvasState = Board & {
   initialized: boolean;
   /** Where the canvas was panned/zoomed to; null until the user first moves it. */
   viewport: Viewport | null;
+  /**
+   * Titles of deleted notes that other notes still mention (by note ID), so those mentions can
+   * still say what they pointed to.
+   */
+  deletedTitles: Record<string, string>;
   /** Mention anchors per note ID. Edges are derived from these; there are no manual edges. */
   mentionAnchors: Record<string, MentionAnchor[]>;
   /** The `@mention` under the pointer: highlights its target note and its edge. */
@@ -293,6 +298,7 @@ const withoutHeight = (nodes: EditorNode[]) =>
 /** A workspace's state before its board is loaded (what's left of the previous one is reset). */
 const BLANK = {
   initialized: false,
+  deletedTitles: {},
   viewport: null,
   nodes: [],
   fields: [],
@@ -343,9 +349,18 @@ export const useCanvasStore = create<CanvasState>()(
             }
             return { ...n, data: { ...n.data, fields: values } };
           });
+          // Mentions of a deleted note keep showing its title.
+          const deletedTitles = { ...s.deletedTitles };
+          for (const id of removed) {
+            const title = s.nodes.find((n) => n.id === id)?.data.title;
+            if (title !== undefined && nodes.some((n) => n.data.content?.includes(id))) {
+              deletedTitles[id] = title;
+            }
+          }
           return {
             nodes,
             fields,
+            deletedTitles,
             mentionAnchors,
             highlight: pruneHighlight(s.highlight, nodes, mentionAnchors),
           };
@@ -554,6 +569,7 @@ export const useCanvasStore = create<CanvasState>()(
         fields: s.fields,
         schemas: s.schemas,
         customIcons: s.customIcons,
+        deletedTitles: s.deletedTitles,
       }),
     },
   ),

@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "@xyflow/react/dist/style.css";
+@import "katex/dist/katex.min.css";
 
 /*
  * GitHub-like type: GitHub's system font stack and a compact scale. 12px (text-xs) for secondary
@@ -157,6 +158,39 @@ input[type="datetime-local"]:is(:hover, :focus)::-webkit-calendar-picker-indicat
 }
 .rte-underline-strikethrough {
   text-decoration: underline line-through;
+}
+/* LaTeX equations: rendered until selected, then their source with a live preview */
+.rte-equation {
+  @apply cursor-pointer rounded-sm hover:bg-gray-100;
+}
+.rte-equation-block {
+  @apply my-1 block px-1 py-0.5 text-center;
+}
+.rte-equation-block .katex-display {
+  @apply m-0;
+}
+.rte-equation-editor {
+  @apply relative;
+}
+.rte-equation-source {
+  @apply rounded-md bg-gray-500/12 px-[0.4em] py-[0.2em] font-mono text-[85%] outline-none placeholder:text-gray-400;
+}
+/* A display equation's source takes the place of the rendered equation */
+textarea.rte-equation-source {
+  @apply block w-full resize-none text-center;
+}
+/* Floats above the source, like a tooltip: from its start when inline, centered over a display one */
+.rte-equation-preview {
+  @apply pointer-events-none absolute bottom-full left-0 z-10 mb-1 rounded-md border border-gray-200 bg-white px-2 py-1 whitespace-nowrap shadow-md;
+}
+.rte-equation-block > .rte-equation-preview {
+  @apply left-1/2 -translate-x-1/2;
+}
+.rte-equation-error {
+  @apply font-mono text-[85%] text-red-600;
+}
+.rte-equation-empty {
+  @apply text-gray-400 italic;
 }
 .rte-code {
   @apply rounded-md bg-gray-500/12 px-[0.4em] py-[0.2em] font-mono text-[85%];

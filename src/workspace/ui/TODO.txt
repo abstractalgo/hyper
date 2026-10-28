@@ -7,5 +7,4 @@ type system with nodes (references)
 inline rendering of properties
 links have properties
 ref nodes (transclusion)
-latex equations
 are icons per schema type, or per node. are they a field or something different?

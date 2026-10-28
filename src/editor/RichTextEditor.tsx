@@ -14,6 +14,7 @@ import { TabIndentationPlugin } from "@lexical/react/LexicalTabIndentationPlugin
 import type { EditorState } from "lexical";
 import { useState } from "react";
 
+import { EquationsPlugin } from "./equations/EquationsPlugin";
 import { MARKDOWN_TRANSFORMERS } from "./markdown";
 import { MentionsPlugin } from "./mentions/MentionsPlugin";
 import { EDITOR_NODES } from "./nodes";
@@ -76,6 +77,7 @@ export function RichTextEditor({
       <AutoLinkPlugin matchers={AUTO_LINK_MATCHERS} />
       <ClickableLinkPlugin newTab />
       <MentionsPlugin noteId={noteId} />
+      <EquationsPlugin />
       <MarkdownShortcutPlugin transformers={MARKDOWN_TRANSFORMERS} />
       <OnChangePlugin onChange={handleChange} ignoreSelectionChange />
     </LexicalComposer>

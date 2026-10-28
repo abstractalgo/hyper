@@ -13,8 +13,41 @@ import {
   QUOTE,
   STRIKETHROUGH,
   UNORDERED_LIST,
+  type TextMatchTransformer,
   type Transformer,
 } from "@lexical/markdown";
+import { $isParagraphNode, $isRootNode } from "lexical";
+
+import {
+  $createEquationNode,
+  $editEquation,
+  $isEquationNode,
+  EquationNode,
+} from "./equations/EquationNode";
+
+/**
+ * `$$ ` starts editing a new equation: a display equation when typed on an empty line, otherwise
+ * an inline one.
+ */
+const EQUATION: TextMatchTransformer = {
+  dependencies: [EquationNode],
+  export: (node) => {
+    if (!$isEquationNode(node)) return null;
+    return node.isInline() ? `$${node.getEquation()}$` : `$$${node.getEquation()}$$`;
+  },
+  regExp: /\$\$ $/,
+  trigger: " ",
+  replace: (textNode) => {
+    const parent = textNode.getParent();
+    const onEmptyLine =
+      $isParagraphNode(parent) && $isRootNode(parent.getParent()) && parent.getChildrenSize() === 1;
+    const equation = $createEquationNode("", !onEmptyLine);
+    if (onEmptyLine) parent.replace(equation);
+    else textNode.replace(equation);
+    $editEquation(equation, "end");
+  },
+  type: "text-match",
+};
 
 /**
  * Markdown shortcuts (e.g. `- `, `1. `, `[] `, `# `, `> `, `**bold**`).
@@ -37,4 +70,5 @@ export const MARKDOWN_TRANSFORMERS: Transformer[] = [
   ITALIC_UNDERSCORE,
   STRIKETHROUGH,
   LINK,
+  EQUATION,
 ];

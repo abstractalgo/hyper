@@ -57,10 +57,10 @@ something, and the links follow.
 
 ### Give notes a type and fields
 
-Click the icon in a note's title bar to choose its type and, optionally, a **color**. A colored
-note gets a tinted title bar, and every mention of it is highlighted in the same color, so an epic
-or a bug stands out wherever it's referenced. Types come with **fields**, shown and edited right
-inside the note:
+Click the icon in a note's title bar to choose its type and, optionally, its own **icon** and a
+**color**. A colored note gets a tinted title bar, and every mention of it is highlighted in the
+same color, so an epic or a bug stands out wherever it's referenced. Types come with **fields**,
+shown and edited right inside the note:
 
 | Field type        | Holds                                                          |
 | ----------------- | -------------------------------------------------------------- |
@@ -68,8 +68,8 @@ inside the note:
 | Multi-select      | Several options (e.g. Labels)                                  |
 | Text, Number      | Free values                                                    |
 | Date, Date & time | A specific date                                                |
-| Icon              | Any icon from a searchable picker                              |
-| Image             | An image URL (e.g. an avatar)                                  |
+| Icon              | Any icon from a searchable picker, including custom icons      |
+| Image             | An image URL                                                   |
 | Reference         | Other notes, optionally of one type (e.g. Assignee → a User)   |
 
 Select fields work like Notion: pick from colored options, type a new name to create one on the
@@ -84,12 +84,14 @@ Open **Workspace settings** (the gear, top right, or `Cmd+,` / `Ctrl+,`) to:
 
 - **Create fields** once and reuse them across types. Rename a field and it changes everywhere.
 - **Create types** (schemas) with a name, an icon, a color, and an ordered set of fields.
+- **Add custom icons**: a name (slug) and an image URL. They show up in every icon picker, so
+  you can use them for a note (like a person's avatar), a type, a field, or an Icon field.
 - **Change things safely**: adding a field gives existing notes its default; removing one asks
   first and tells you how many notes have values in it.
 
-Every workspace has a built-in **User** type with an avatar. People live on the canvas like any
-other note, so you can mention them and assign them to tasks, and their avatar shows wherever
-they're mentioned.
+Every workspace has a built-in **User** type. People live on the canvas like any other note, so
+you can mention them and assign them to tasks. Give a person a custom icon (their avatar) from the
+icon button in their title bar, and it shows wherever they're mentioned.
 
 ### Pick up where you left off
 

@@ -1,12 +1,15 @@
 import { Menu } from "@base-ui/react/menu";
-import { CheckIcon } from "lucide-react";
+import { CheckIcon, ImageIcon, RotateCcwIcon } from "lucide-react";
+import { useRef, useState } from "react";
 
 import { useCanvasStore } from "../store/canvas.ts";
-import { SchemaIcon } from "../workspace/icons.tsx";
+import { IconByName, SchemaIcon } from "../workspace/icons.tsx";
 import { OPTION_COLOR_CLASSES, OPTION_COLORS, type OptionColor } from "../workspace/model.ts";
+import { IconPicker } from "../workspace/ui/IconPicker.tsx";
 import {
   POPUP_CLASS,
   POSITIONER_CLASS,
+  PopupContainerContext,
   usePopupContainer,
   useViewportPortal,
 } from "../workspace/ui/popups.tsx";
@@ -14,8 +17,11 @@ import {
 type NoteSchemaMenuProps = {
   schemaId: string | null;
   color: OptionColor | null;
+  /** The note's own icon (an icon reference), or null to use its type's icon. */
+  icon: string | null;
   onSchemaChange: (schemaId: string | null) => void;
   onColorChange: (color: OptionColor | null) => void;
+  onIconChange: (icon: string | null) => void;
 };
 
 const itemClass =
@@ -36,15 +42,19 @@ function Checked() {
 }
 
 /**
- * The note's type icon in its title bar. Opens a menu to change the note's type (schema) and
- * its color; both apply immediately and the menu stays open.
+ * The note's icon in its title bar. Opens a menu to change the note's type (schema), its own
+ * icon and its color; type and color apply immediately and the menu stays open.
  */
 export function NoteSchemaMenu({
   schemaId,
   color,
+  icon,
   onSchemaChange,
   onColorChange,
+  onIconChange,
 }: NoteSchemaMenuProps) {
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const [pickingIcon, setPickingIcon] = useState(false);
   const schemas = useCanvasStore((s) => s.schemas);
   const current = schemas.find((s) => s.id === schemaId);
   // On the canvas the menu renders in React Flow's viewport (so it zooms with the note); inside
@@ -53,64 +63,99 @@ export function NoteSchemaMenu({
   const container = usePopupContainer() ?? viewportPortal;
 
   return (
-    <Menu.Root>
-      <Menu.Trigger
-        aria-label={`${current?.name ?? "Note"}, change type or color`}
-        className="nodrag flex size-5 shrink-0 cursor-pointer items-center justify-center rounded hover:bg-black/10 focus-visible:outline-2 focus-visible:outline-blue-600 data-popup-open:bg-black/10"
-      >
-        <SchemaIcon schemaId={schemaId} className="size-3.5" />
-      </Menu.Trigger>
-      <Menu.Portal container={container}>
-        <Menu.Positioner sideOffset={4} align="start" className={POSITIONER_CLASS}>
-          <Menu.Popup
-            className={`max-h-[var(--available-height)] min-w-40 overflow-y-auto py-1 ${POPUP_CLASS}`}
-          >
-            <Menu.Group>
-              <Menu.GroupLabel className={groupLabelClass}>Type</Menu.GroupLabel>
-              <Menu.RadioGroup
-                value={schemaId ?? NONE}
-                onValueChange={(value: string) => onSchemaChange(value === NONE ? null : value)}
-              >
-                <Menu.RadioItem value={NONE} className={itemClass}>
-                  <Checked />
-                  <SchemaIcon schemaId={null} className="size-3.5" />
-                  Note
-                </Menu.RadioItem>
-                {schemas.map((schema) => (
-                  <Menu.RadioItem key={schema.id} value={schema.id} className={itemClass}>
+    <>
+      <Menu.Root>
+        <Menu.Trigger
+          ref={triggerRef}
+          aria-label={`${current?.name ?? "Note"}, change type, icon or color`}
+          className="nodrag flex size-5 shrink-0 cursor-pointer items-center justify-center rounded hover:bg-black/10 focus-visible:outline-2 focus-visible:outline-blue-600 data-popup-open:bg-black/10"
+        >
+          {icon ? (
+            <IconByName name={icon} className="size-3.5" />
+          ) : (
+            <SchemaIcon schemaId={schemaId} className="size-3.5" />
+          )}
+        </Menu.Trigger>
+        <Menu.Portal container={container}>
+          <Menu.Positioner sideOffset={4} align="start" className={POSITIONER_CLASS}>
+            <Menu.Popup
+              className={`max-h-[var(--available-height)] min-w-40 overflow-y-auto py-1 ${POPUP_CLASS}`}
+            >
+              <Menu.Group>
+                <Menu.GroupLabel className={groupLabelClass}>Type</Menu.GroupLabel>
+                <Menu.RadioGroup
+                  value={schemaId ?? NONE}
+                  onValueChange={(value: string) => onSchemaChange(value === NONE ? null : value)}
+                >
+                  <Menu.RadioItem value={NONE} className={itemClass}>
                     <Checked />
-                    <SchemaIcon schemaId={schema.id} className="size-3.5" />
-                    {schema.name}
+                    <SchemaIcon schemaId={null} className="size-3.5" />
+                    Note
                   </Menu.RadioItem>
-                ))}
-              </Menu.RadioGroup>
-            </Menu.Group>
-            <Menu.Separator className="my-1 h-px bg-gray-200" />
-            <Menu.Group>
-              <Menu.GroupLabel className={groupLabelClass}>Color</Menu.GroupLabel>
-              <Menu.RadioGroup
-                value={color ?? NONE}
-                onValueChange={(value: string) =>
-                  onColorChange(value === NONE ? null : (value as OptionColor))
-                }
-              >
-                <Menu.RadioItem value={NONE} className={itemClass}>
-                  <Checked />
-                  <span className="size-3.5 rounded border border-gray-300 bg-white" />
-                  Default
-                </Menu.RadioItem>
-                {OPTION_COLORS.map((c) => (
-                  <Menu.RadioItem key={c} value={c} className={`${itemClass} capitalize`}>
+                  {schemas.map((schema) => (
+                    <Menu.RadioItem key={schema.id} value={schema.id} className={itemClass}>
+                      <Checked />
+                      <SchemaIcon schemaId={schema.id} className="size-3.5" />
+                      {schema.name}
+                    </Menu.RadioItem>
+                  ))}
+                </Menu.RadioGroup>
+              </Menu.Group>
+              <Menu.Separator className="my-1 h-px bg-gray-200" />
+              <Menu.Group>
+                <Menu.GroupLabel className={groupLabelClass}>Icon</Menu.GroupLabel>
+                {/* Closes the menu and opens the icon picker next to the same button. */}
+                <Menu.Item onClick={() => setPickingIcon(true)} className={`${itemClass} pl-7.5`}>
+                  {icon ? (
+                    <IconByName name={icon} className="size-3.5" />
+                  ) : (
+                    <ImageIcon className="size-3.5 text-gray-500" />
+                  )}
+                  Choose icon…
+                </Menu.Item>
+                {icon && (
+                  <Menu.Item onClick={() => onIconChange(null)} className={`${itemClass} pl-7.5`}>
+                    <RotateCcwIcon className="size-3.5 text-gray-500" />
+                    Use the type's icon
+                  </Menu.Item>
+                )}
+              </Menu.Group>
+              <Menu.Separator className="my-1 h-px bg-gray-200" />
+              <Menu.Group>
+                <Menu.GroupLabel className={groupLabelClass}>Color</Menu.GroupLabel>
+                <Menu.RadioGroup
+                  value={color ?? NONE}
+                  onValueChange={(value: string) =>
+                    onColorChange(value === NONE ? null : (value as OptionColor))
+                  }
+                >
+                  <Menu.RadioItem value={NONE} className={itemClass}>
                     <Checked />
-                    <span className={`size-3.5 rounded ${OPTION_COLOR_CLASSES[c]}`} />
-                    {c}
+                    <span className="size-3.5 rounded border border-gray-300 bg-white" />
+                    Default
                   </Menu.RadioItem>
-                ))}
-              </Menu.RadioGroup>
-            </Menu.Group>
-          </Menu.Popup>
-        </Menu.Positioner>
-      </Menu.Portal>
-    </Menu.Root>
+                  {OPTION_COLORS.map((c) => (
+                    <Menu.RadioItem key={c} value={c} className={`${itemClass} capitalize`}>
+                      <Checked />
+                      <span className={`size-3.5 rounded ${OPTION_COLOR_CLASSES[c]}`} />
+                      {c}
+                    </Menu.RadioItem>
+                  ))}
+                </Menu.RadioGroup>
+              </Menu.Group>
+            </Menu.Popup>
+          </Menu.Positioner>
+        </Menu.Portal>
+      </Menu.Root>
+      <PopupContainerContext.Provider value={container}>
+        <IconPicker
+          label="Note icon"
+          open={pickingIcon}
+          onOpenChange={setPickingIcon}
+          anchor={triggerRef}
+          onPick={onIconChange}
+        />
+      </PopupContainerContext.Provider>
+    </>
   );
 }

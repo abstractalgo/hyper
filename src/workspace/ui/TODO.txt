@@ -1,12 +1,11 @@
 auto-increment for task IDs
 configurable custom layout rendering of schemas in nodes and @mentions
 type system with nodes (references)
-  properties are just RTE nodes
-  hover in properties also highlights the nodes in the canvas
-  ~background color is a property of a node~
-  hide certain nodes (and links) from canvas
   render links to nodes even on properties
+  hover in properties also highlights the nodes in the canvas
+  hide certain nodes (and links) from canvas
 inline rendering of properties
 links have properties
 ref nodes (transclusion)
 Cmd+K search
+are icons per schema type, or per node. are they a field or something different?

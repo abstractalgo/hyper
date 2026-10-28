@@ -22,11 +22,12 @@ import {
   type EditorNode,
 } from "../store/canvas.ts";
 import {
-  AVATAR_FIELD_ID,
-  BUILT_IN_FIELDS,
   BUILT_IN_SCHEMAS,
   initialValue,
+  customIconRef,
+  slugify,
   USER_SCHEMA_ID,
+  type CustomIcon,
   type FieldAtom,
   type FieldDef,
   type FieldValue,
@@ -114,7 +115,7 @@ const FIELD_KEYS = [
   "timebox",
   "target",
 ] as const;
-type FieldKey = (typeof FIELD_KEYS)[number] | "avatar";
+type FieldKey = (typeof FIELD_KEYS)[number];
 
 const SCHEMA_KEYS = ["task", "bug", "spike", "epic"] as const;
 type SchemaKey = (typeof SCHEMA_KEYS)[number] | "user";
@@ -124,6 +125,8 @@ type SampleFields = Partial<Record<FieldKey, (FieldAtom | { ref: NoteKey })[]>>;
 const ref = (note: NoteKey) => ({ ref: note });
 
 type SampleNote = {
+  /** Image URL for a user's avatar, added as a custom icon. */
+  avatar?: string;
   title: string;
   schema: SchemaKey;
   color?: OptionColor;
@@ -399,7 +402,7 @@ const SAMPLE: Record<NoteKey, SampleNote> = {
   ana: {
     title: "Ana Silva",
     schema: "user",
-    fields: { avatar: [avatarUrl("Ana Silva")] },
+    avatar: avatarUrl("Ana Silva"),
     x: 0,
     y: 1220,
     blocks: [{ p: ["Engineering manager, Expenses team."] }],
@@ -407,7 +410,7 @@ const SAMPLE: Record<NoteKey, SampleNote> = {
   marcus: {
     title: "Marcus Lee",
     schema: "user",
-    fields: { avatar: [avatarUrl("Marcus Lee")] },
+    avatar: avatarUrl("Marcus Lee"),
     x: 560,
     y: 1220,
     blocks: [{ p: ["Platform engineer. Owns auth and the audit pipeline."] }],
@@ -415,7 +418,7 @@ const SAMPLE: Record<NoteKey, SampleNote> = {
   priya: {
     title: "Priya Nair",
     schema: "user",
-    fields: { avatar: [avatarUrl("Priya Nair")] },
+    avatar: avatarUrl("Priya Nair"),
     x: 1120,
     y: 1220,
     blocks: [{ p: ["Frontend engineer. Receipts and uploads."] }],
@@ -480,7 +483,7 @@ const idsOf = (notes: Map<string, EditorNode>) => [...notes.values()].map((n) =>
 
 function sampleFields(f: FieldIds, options: OptionNotes, userIds: string[]): FieldDef[] {
   const field = (
-    key: Exclude<FieldKey, "avatar">,
+    key: FieldKey,
     def: Pick<FieldDef, "name" | "type"> & Partial<FieldDef>,
   ): FieldDef => ({
     id: f[key],
@@ -491,7 +494,6 @@ function sampleFields(f: FieldIds, options: OptionNotes, userIds: string[]): Fie
     ...def,
   });
   return [
-    ...BUILT_IN_FIELDS,
     field("status", {
       name: "Status",
       icon: "circle-dot",
@@ -569,10 +571,7 @@ function sampleSchemas(f: FieldIds, s: Record<SchemaKey, string>): Schema[] {
  */
 export function createSampleBoard(): Board {
   const ids = Object.fromEntries(NOTE_KEYS.map((k) => [k, newNoteId()])) as Ids;
-  const fieldIds = {
-    ...Object.fromEntries(FIELD_KEYS.map((k) => [k, newId()])),
-    avatar: AVATAR_FIELD_ID,
-  } as FieldIds;
+  const fieldIds = Object.fromEntries(FIELD_KEYS.map((k) => [k, newId()])) as FieldIds;
   const schemaIds = {
     ...Object.fromEntries(SCHEMA_KEYS.map((k) => [k, newId()])),
     user: USER_SCHEMA_ID,
@@ -596,8 +595,17 @@ export function createSampleBoard(): Board {
     },
   });
 
+  // Users' avatars are workspace custom icons, set as their notes' icons.
+  const customIcons: CustomIcon[] = [];
+
   const nodes = NOTE_KEYS.map((key) => {
     const note = SAMPLE[key];
+    let icon: string | null = null;
+    if (note.avatar) {
+      const custom = { id: newId(), name: slugify(note.title), url: note.avatar };
+      customIcons.push(custom);
+      icon = customIconRef(custom.id);
+    }
     editor.update(
       () => {
         $getRoot()
@@ -629,6 +637,7 @@ export function createSampleBoard(): Board {
       schemaId: schema.id,
       fields: values,
       color: note.color,
+      icon,
       position: { x: note.x, y: note.y },
       content,
       id: ids[key],
@@ -636,5 +645,5 @@ export function createSampleBoard(): Board {
   });
 
   const optionNotes = Object.values(options).flatMap((notes) => [...notes.values()]);
-  return { nodes: [...nodes, ...optionNotes], fields, schemas };
+  return { nodes: [...nodes, ...optionNotes], fields, schemas, customIcons };
 }

@@ -2,7 +2,7 @@ import { ArrowDownIcon, ArrowUpIcon, XIcon } from "lucide-react";
 import { useState } from "react";
 
 import { newId, useCanvasStore } from "../../store/canvas.ts";
-import { FieldIcon, LucideByName, SchemaIcon } from "../icons.tsx";
+import { FieldIcon, IconByName, SchemaIcon } from "../icons.tsx";
 import { FIELD_TYPE_LABELS, SCHEMA_COLOR_CLASSES, SCHEMA_COLORS, type Schema } from "../model.ts";
 import { Dropdown } from "./Dropdown.tsx";
 import { IconPicker } from "./IconPicker.tsx";
@@ -148,7 +148,7 @@ function SchemaForm({
             onPick={(icon) => update({ icon })}
             triggerClassName="flex size-8 items-center justify-center rounded border border-gray-300 hover:bg-gray-50"
           >
-            <LucideByName
+            <IconByName
               name={draft.icon}
               className={`size-4 ${SCHEMA_COLOR_CLASSES[draft.color]}`}
             />

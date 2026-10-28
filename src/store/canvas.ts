@@ -8,13 +8,14 @@ import {
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 
+import { avatarsToIcons } from "./avatarsToIcons.ts";
 import { debouncedLocalStorage } from "./debouncedStorage.ts";
-import { optionsToNotes } from "./optionsToNotes.ts";
 import {
-  BUILT_IN_FIELDS,
   BUILT_IN_SCHEMAS,
   conformValue,
+  customIconRef,
   initialValue,
+  type CustomIcon,
   type FieldDef,
   type FieldValue,
   type OptionColor,
@@ -29,6 +30,8 @@ export type EditorNodeData = {
   fields: Record<string, FieldValue>;
   /** Tints the note's title bar and its mentions; unset for the default look. */
   color?: OptionColor | null;
+  /** The note's own icon (an icon reference, e.g. a user's avatar); unset uses its type's icon. */
+  icon?: string | null;
   /** Serialized Lexical editor state (JSON), or null for an empty editor. */
   content: string | null;
 };
@@ -52,7 +55,12 @@ export type MentionLink = { sourceId: string; handleId: string; targetId: string
 export type Highlight = { kind: "link"; link: MentionLink } | { kind: "incoming"; noteId: string };
 
 /** Everything that makes up a board: what's saved, and what the sample provides. */
-export type Board = { nodes: EditorNode[]; fields: FieldDef[]; schemas: Schema[] };
+export type Board = {
+  nodes: EditorNode[];
+  fields: FieldDef[];
+  schemas: Schema[];
+  customIcons: CustomIcon[];
+};
 
 type CanvasState = Board & {
   /** False until a board has been loaded (first visit, before the sample is seeded). */
@@ -96,6 +104,10 @@ type CanvasState = Board & {
   saveSchema: (schema: Schema) => void;
   /** Deletes a schema; its notes become plain notes (their field values are dropped). */
   deleteSchema: (schemaId: string) => void;
+  /** Adds or replaces a custom icon. */
+  saveCustomIcon: (icon: CustomIcon) => void;
+  /** Deletes a custom icon; types, fields, notes and values using it fall back to no icon. */
+  deleteCustomIcon: (iconId: string) => void;
 };
 
 /** Whether any note has a value for the field (its type can't be changed then). */
@@ -222,6 +234,7 @@ type NewNote = {
   schemaId?: string | null;
   fields?: Record<string, FieldValue>;
   color?: OptionColor | null;
+  icon?: string | null;
   content?: string | null;
   id?: string;
   width?: number;
@@ -233,6 +246,7 @@ export const createNote = ({
   schemaId = null,
   fields = {},
   color = null,
+  icon = null,
   content = null,
   id = newNoteId(),
   width = NOTE_WIDTH,
@@ -241,7 +255,7 @@ export const createNote = ({
   type: "editor",
   position,
   width,
-  data: { title, schemaId, fields, color, content },
+  data: { title, schemaId, fields, color, icon, content },
 });
 
 /** Only what's worth saving: drops React Flow's runtime state (measured size, selection…). */
@@ -263,7 +277,8 @@ export const useCanvasStore = create<CanvasState>()(
       initialized: false,
       viewport: null,
       nodes: [],
-      fields: BUILT_IN_FIELDS,
+      fields: [],
+      customIcons: [],
       schemas: BUILT_IN_SCHEMAS,
       mentionAnchors: {},
       hoveredMention: null,
@@ -360,12 +375,13 @@ export const useCanvasStore = create<CanvasState>()(
       setHighlight: (highlight) => set({ highlight }),
       setViewport: (viewport) => set({ viewport }),
 
-      loadBoard: ({ nodes, fields, schemas }) =>
+      loadBoard: ({ nodes, fields, schemas, customIcons }) =>
         set({
           initialized: true,
           nodes,
           fields,
           schemas,
+          customIcons,
           mentionAnchors: {},
           hoveredMention: null,
           highlight: null,
@@ -466,12 +482,50 @@ export const useCanvasStore = create<CanvasState>()(
               : n,
           ),
         })),
+      saveCustomIcon: (icon) =>
+        set((s) => ({
+          customIcons: s.customIcons.some((i) => i.id === icon.id)
+            ? s.customIcons.map((i) => (i.id === icon.id ? icon : i))
+            : [...s.customIcons, icon],
+        })),
+      deleteCustomIcon: (iconId) =>
+        set((s) => {
+          const ref = customIconRef(iconId);
+          const iconFieldIds = new Set(s.fields.filter((f) => f.type === "icon").map((f) => f.id));
+          return {
+            customIcons: s.customIcons.filter((i) => i.id !== iconId),
+            schemas: s.schemas.map((sc) => (sc.icon === ref ? { ...sc, icon: "file-text" } : sc)),
+            fields: s.fields.map((f) =>
+              f.icon === ref
+                ? { ...f, icon: undefined }
+                : iconFieldIds.has(f.id) && f.defaultValue.includes(ref)
+                  ? { ...f, defaultValue: f.defaultValue.filter((v) => v !== ref) }
+                  : f,
+            ),
+            nodes: s.nodes.map((n) => {
+              const usesIt = Object.entries(n.data.fields).some(
+                ([id, v]) => iconFieldIds.has(id) && v.includes(ref),
+              );
+              if (n.data.icon !== ref && !usesIt) return n;
+              const fields = Object.fromEntries(
+                Object.entries(n.data.fields).map(([id, v]) => [
+                  id,
+                  iconFieldIds.has(id) ? v.filter((x) => x !== ref) : v,
+                ]),
+              );
+              return {
+                ...n,
+                data: { ...n.data, icon: n.data.icon === ref ? null : n.data.icon, fields },
+              };
+            }),
+          };
+        }),
     }),
     {
       name: "hyper-board",
-      version: 9,
-      // Saved boards from before options were notes get converted once, on load.
-      migrate: (persisted) => optionsToNotes(persisted as CanvasState),
+      version: 10,
+      // Saved boards from before custom icons get converted once, on load.
+      migrate: (persisted) => avatarsToIcons(persisted as CanvasState),
       storage: createJSONStorage(() => debouncedLocalStorage()),
       partialize: (s) => ({
         initialized: s.initialized,
@@ -479,6 +533,7 @@ export const useCanvasStore = create<CanvasState>()(
         nodes: s.nodes.map(persistedNode),
         fields: s.fields,
         schemas: s.schemas,
+        customIcons: s.customIcons,
       }),
     },
   ),

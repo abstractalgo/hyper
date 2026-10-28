@@ -59,6 +59,10 @@ export const EditorNodeView = memo(function EditorNodeView({
     (color: OptionColor | null) => updateNodeData(id, { color }),
     [id, updateNodeData],
   );
+  const handleIconChange = useCallback(
+    (icon: string | null) => updateNodeData(id, { icon }),
+    [id, updateNodeData],
+  );
   const handleRename = useCallback(
     (title: string) => updateNodeData(id, { title }),
     [id, updateNodeData],
@@ -85,8 +89,10 @@ export const EditorNodeView = memo(function EditorNodeView({
         <NoteSchemaMenu
           schemaId={data.schemaId}
           color={data.color ?? null}
+          icon={data.icon ?? null}
           onSchemaChange={handleSchemaChange}
           onColorChange={handleColorChange}
+          onIconChange={handleIconChange}
         />
         <div className="min-w-0 flex-1">
           <NoteTitle title={data.title} onRename={handleRename} />

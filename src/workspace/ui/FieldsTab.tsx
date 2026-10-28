@@ -441,14 +441,17 @@ function OptionNoteMenu({ noteId }: { noteId: string }) {
     (s) => s.nodes.find((n) => n.id === noteId)?.data.schemaId ?? null,
   );
   const color = useCanvasStore((s) => s.nodes.find((n) => n.id === noteId)?.data.color ?? null);
+  const icon = useCanvasStore((s) => s.nodes.find((n) => n.id === noteId)?.data.icon ?? null);
   const setNoteSchema = useCanvasStore((s) => s.setNoteSchema);
   const updateNodeData = useCanvasStore((s) => s.updateNodeData);
   return (
     <NoteSchemaMenu
       schemaId={schemaId}
       color={color}
+      icon={icon}
       onSchemaChange={(id) => setNoteSchema(noteId, id)}
       onColorChange={(c) => updateNodeData(noteId, { color: c })}
+      onIconChange={(i) => updateNodeData(noteId, { icon: i })}
     />
   );
 }

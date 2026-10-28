@@ -2,7 +2,7 @@ import { PlusIcon, XIcon } from "lucide-react";
 import { useState, type KeyboardEvent } from "react";
 
 import { useCanvasStore } from "../../store/canvas.ts";
-import { LucideByName } from "../icons.tsx";
+import { IconByName } from "../icons.tsx";
 import {
   formatDateAtom,
   parseAtom,
@@ -181,7 +181,7 @@ function InlineAtomInput({
 function AtomView({ field, atom }: { field: FieldDef; atom: FieldAtom }) {
   switch (field.type) {
     case "icon":
-      return <LucideByName name={String(atom)} label={String(atom)} className="size-3.5" />;
+      return <IconByName name={String(atom)} label={String(atom)} className="size-3.5" />;
     case "image":
       return <img src={String(atom)} alt="" className="size-5 rounded object-cover" />;
     case "date":

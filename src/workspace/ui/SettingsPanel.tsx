@@ -1,6 +1,7 @@
 import { Tabs } from "@base-ui/react/tabs";
 
 import { FieldsTab } from "./FieldsTab.tsx";
+import { IconsTab } from "./IconsTab.tsx";
 import { SchemasTab } from "./SchemasTab.tsx";
 
 const tabClass =
@@ -17,12 +18,18 @@ export default function SettingsPanel() {
         <Tabs.Tab value="schemas" className={tabClass}>
           Schemas
         </Tabs.Tab>
+        <Tabs.Tab value="icons" className={tabClass}>
+          Icons
+        </Tabs.Tab>
       </Tabs.List>
       <Tabs.Panel value="fields" className="flex min-h-0 flex-1">
         <FieldsTab />
       </Tabs.Panel>
       <Tabs.Panel value="schemas" className="flex min-h-0 flex-1">
         <SchemasTab />
+      </Tabs.Panel>
+      <Tabs.Panel value="icons" className="flex min-h-0 flex-1">
+        <IconsTab />
       </Tabs.Panel>
     </Tabs.Root>
   );

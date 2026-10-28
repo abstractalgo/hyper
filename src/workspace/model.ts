@@ -123,7 +123,7 @@ export const SCHEMA_COLOR_CLASSES: Record<SchemaColor, string> = {
 export type Schema = {
   id: string;
   name: string;
-  /** Lucide icon name (kebab-case, e.g. `square-check-big`). */
+  /** Icon reference: a Lucide name (e.g. `square-check-big`) or a custom icon (`custom:<id>`). */
   icon: string;
   color: SchemaColor;
   fieldIds: string[];
@@ -132,20 +132,6 @@ export type Schema = {
 };
 
 export const USER_SCHEMA_ID = "schema-user";
-export const AVATAR_FIELD_ID = "field-avatar";
-
-export const BUILT_IN_FIELDS: FieldDef[] = [
-  {
-    id: AVATAR_FIELD_ID,
-    name: "Avatar",
-    type: "image",
-    multiple: false,
-    required: false,
-    defaultValue: [],
-    optionIds: [],
-    builtIn: true,
-  },
-];
 
 export const BUILT_IN_SCHEMAS: Schema[] = [
   {
@@ -153,10 +139,49 @@ export const BUILT_IN_SCHEMAS: Schema[] = [
     name: "User",
     icon: "user-round",
     color: "gray",
-    fieldIds: [AVATAR_FIELD_ID],
+    fieldIds: [],
     builtIn: true,
   },
 ];
+
+/** A workspace icon from an image URL, usable anywhere a Lucide icon is (e.g. a user's avatar). */
+export type CustomIcon = {
+  id: string;
+  /** Slug shown in pickers and used to search, e.g. `ana-silva`. */
+  name: string;
+  url: string;
+};
+
+/**
+ * Icons are referenced by string everywhere (types, fields, notes, Icon field values): a Lucide
+ * name, or `custom:<id>` for a custom icon, so renaming a custom icon's slug breaks nothing.
+ */
+const CUSTOM_ICON_PREFIX = "custom:";
+export const customIconRef = (id: string) => `${CUSTOM_ICON_PREFIX}${id}`;
+export const customIconId = (ref: string) =>
+  ref.startsWith(CUSTOM_ICON_PREFIX) ? ref.slice(CUSTOM_ICON_PREFIX.length) : null;
+
+/** Lowercase words separated by dashes, e.g. "Ana Silva" → `ana-silva`. */
+export const slugify = (text: string) =>
+  text
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+
+/** Problems with a custom icon, as user-facing messages (empty = valid). */
+export function validateCustomIcon(icon: CustomIcon, all: CustomIcon[]): string[] {
+  const errors: string[] = [];
+  if (!/^[a-z0-9]+(-[a-z0-9]+)*$/.test(icon.name)) {
+    errors.push("The name must be a slug: lowercase letters, digits and dashes (e.g. ana-silva).");
+  } else if (all.some((other) => other.id !== icon.id && other.name === icon.name)) {
+    errors.push("Another icon already has this name.");
+  }
+  if (!/^https?:\/\//i.test(icon.url.trim()))
+    errors.push("The URL must start with http:// or https://.");
+  return errors;
+}
 
 /** The value a note gets for a field when the field is first applied to it. */
 export const initialValue = (field: FieldDef): FieldValue =>

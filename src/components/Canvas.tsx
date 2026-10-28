@@ -12,7 +12,7 @@ import {
 import { useMemo, type MouseEvent } from "react";
 import { useShallow } from "zustand/react/shallow";
 
-import { NOTE_WIDTH, useCanvasStore } from "../store/canvas.ts";
+import { isLinkHighlighted, NOTE_WIDTH, useCanvasStore } from "../store/canvas.ts";
 import { EditorNodeView, TITLE_HANDLE_ID } from "./EditorNode.tsx";
 
 const nodeTypes: NodeTypes = { editor: EditorNodeView };
@@ -41,8 +41,8 @@ function useMentionEdges(): Edge[] {
   const mentionAnchors = useCanvasStore((s) => s.mentionAnchors);
   const nodeIds = useCanvasStore(useShallow((s) => s.nodes.map((n) => n.id)));
   const measured = useStore(measuredSourceHandles);
-  const hovered = useCanvasStore((s) => s.hoveredMention);
-  const active = useCanvasStore((s) => s.activeLink);
+  const hoveredMention = useCanvasStore((s) => s.hoveredMention);
+  const highlight = useCanvasStore((s) => s.highlight);
 
   return useMemo(() => {
     const exists = new Set(nodeIds);
@@ -62,22 +62,23 @@ function useMentionEdges(): Edge[] {
               sourceHandle: a.handleId,
               target: a.targetId,
               targetHandle: TITLE_HANDLE_ID,
-              ...([hovered, active].some(
-                (link) => link?.sourceId === source && link.handleId === a.handleId,
+              ...(isLinkHighlighted(
+                { hoveredMention, highlight },
+                { sourceId: source, handleId: a.handleId, targetId: a.targetId },
               ) && { className: "mention-edge-highlighted", zIndex: 1 }),
             }))
         : [],
     );
-  }, [mentionAnchors, nodeIds, measured, hovered, active]);
+  }, [mentionAnchors, nodeIds, measured, hoveredMention, highlight]);
 }
 
 export function Canvas() {
-  const { nodes, onNodesChange, addNode, setActiveLink } = useCanvasStore(
+  const { nodes, onNodesChange, addNode, setHighlight } = useCanvasStore(
     useShallow((s) => ({
       nodes: s.nodes,
       onNodesChange: s.onNodesChange,
       addNode: s.addNode,
-      setActiveLink: s.setActiveLink,
+      setHighlight: s.setHighlight,
     })),
   );
   const edges = useMentionEdges();
@@ -99,14 +100,13 @@ export function Canvas() {
       onNodesChange={onNodesChange}
       onDoubleClick={handleDoubleClick}
       onEdgeClick={(_, edge) =>
-        setActiveLink({
-          sourceId: edge.source,
-          handleId: edge.sourceHandle ?? "",
-          targetId: edge.target,
+        setHighlight({
+          kind: "link",
+          link: { sourceId: edge.source, handleId: edge.sourceHandle ?? "", targetId: edge.target },
         })
       }
-      onPaneClick={() => setActiveLink(null)}
-      onNodeClick={() => setActiveLink(null)}
+      onPaneClick={() => setHighlight(null)}
+      onNodeClick={() => setHighlight(null)}
       zoomOnDoubleClick={false}
       // Edges only come from @mentions, so they can't be drawn, edited or selected by hand.
       nodesConnectable={false}

@@ -28,11 +28,7 @@ export function NoteTitle({ title, onRename }: NoteTitleProps) {
 
   if (draft === null) {
     return (
-      <span
-        className="block truncate"
-        title="Double-click to rename"
-        onDoubleClick={() => setDraft(title)}
-      >
+      <span className="block truncate" onDoubleClick={() => setDraft(title)}>
         {title}
       </span>
     );

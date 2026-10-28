@@ -22,14 +22,17 @@ export type MentionAnchor = {
 /** One `@mention` link: the mentioning note, that mention's handle, and the mentioned note. */
 export type MentionLink = { sourceId: string; handleId: string; targetId: string };
 
+/** What a click has highlighted: one edge, or every edge coming into a note. */
+export type Highlight = { kind: "link"; link: MentionLink } | { kind: "incoming"; noteId: string };
+
 type CanvasState = {
   nodes: EditorNode[];
   /** Mention anchors per note ID. Edges are derived from these; there are no manual edges. */
   mentionAnchors: Record<string, MentionAnchor[]>;
   /** The `@mention` under the pointer: highlights its target note and its edge. */
   hoveredMention: MentionLink | null;
-  /** The clicked edge: highlights it and the notes at both ends. */
-  activeLink: MentionLink | null;
+  /** Set by clicking an edge or a note's incoming handle; cleared by clicking elsewhere. */
+  highlight: Highlight | null;
   onNodesChange: (changes: NodeChange<EditorNode>[]) => void;
   addNode: (position: XYPosition) => void;
   /** Adds a note to the right of `sourceId`, below any notes already there. Returns its ID. */
@@ -37,8 +40,54 @@ type CanvasState = {
   updateNodeData: (id: string, data: Partial<EditorNodeData>) => void;
   setMentionAnchors: (id: string, anchors: MentionAnchor[]) => void;
   setHoveredMention: (mention: MentionLink | null) => void;
-  setActiveLink: (link: MentionLink | null) => void;
+  setHighlight: (highlight: Highlight | null) => void;
 };
+
+/** Whether the edge for `link` is highlighted (hovered mention, clicked edge, or incoming). */
+export function isLinkHighlighted(
+  s: Pick<CanvasState, "hoveredMention" | "highlight">,
+  link: MentionLink,
+): boolean {
+  const matches = (other: MentionLink | null | undefined) =>
+    other?.sourceId === link.sourceId && other.handleId === link.handleId;
+  const h = s.highlight;
+  return (
+    matches(s.hoveredMention) ||
+    (h?.kind === "link" && matches(h.link)) ||
+    (h?.kind === "incoming" && h.noteId === link.targetId)
+  );
+}
+
+/**
+ * Whether a note is highlighted: the target of the hovered mention, either end of a clicked
+ * edge, or the source of an edge into the note whose incoming handle was clicked.
+ */
+export function isNoteHighlighted(s: CanvasState, id: string): boolean {
+  const h = s.highlight;
+  return (
+    s.hoveredMention?.targetId === id ||
+    (h?.kind === "link" && (h.link.sourceId === id || h.link.targetId === id)) ||
+    (h?.kind === "incoming" &&
+      h.noteId !== id &&
+      (s.mentionAnchors[id]?.some((a) => a.targetId === h.noteId) ?? false))
+  );
+}
+
+/** Drops a highlight that points at notes or mentions that no longer exist. */
+function pruneHighlight(
+  h: Highlight | null,
+  nodes: EditorNode[],
+  mentionAnchors: CanvasState["mentionAnchors"],
+): Highlight | null {
+  if (!h) return h;
+  const exists = (id: string) => nodes.some((n) => n.id === id);
+  if (h.kind === "incoming") return exists(h.noteId) ? h : null;
+  const { sourceId, handleId, targetId } = h.link;
+  const stillMentioned = mentionAnchors[sourceId]?.some(
+    (a) => a.handleId === handleId && a.targetId === targetId,
+  );
+  return exists(sourceId) && exists(targetId) && stillMentioned ? h : null;
+}
 
 export const NOTE_WIDTH = 360;
 /** Height assumed for notes that haven't been measured yet (e.g. just created). */
@@ -96,21 +145,18 @@ export const useCanvasStore = create<CanvasState>()((set, get) => ({
   nodes: [],
   mentionAnchors: {},
   hoveredMention: null,
-  activeLink: null,
+  highlight: null,
   onNodesChange: (changes) =>
     set((s) => {
       const removed = changes.flatMap((c) => (c.type === "remove" ? [c.id] : []));
       if (removed.length === 0) return { nodes: applyNodeChanges(changes, s.nodes) };
       const mentionAnchors = { ...s.mentionAnchors };
       for (const id of removed) delete mentionAnchors[id];
-      const { activeLink } = s;
-      const linkRemoved =
-        activeLink &&
-        (removed.includes(activeLink.sourceId) || removed.includes(activeLink.targetId));
+      const nodes = applyNodeChanges(changes, s.nodes);
       return {
-        nodes: applyNodeChanges(changes, s.nodes),
+        nodes,
         mentionAnchors,
-        ...(linkRemoved && { activeLink: null }),
+        highlight: pruneHighlight(s.highlight, nodes, mentionAnchors),
       };
     }),
   addNode: (position) =>
@@ -129,18 +175,10 @@ export const useCanvasStore = create<CanvasState>()((set, get) => ({
     })),
   setMentionAnchors: (id, anchors) =>
     set((s) => {
-      // Drop the active link once its mention is gone (deleted, or retyped to another note).
-      const { activeLink } = s;
-      const linkGone =
-        activeLink?.sourceId === id &&
-        !anchors.some(
-          (a) => a.handleId === activeLink.handleId && a.targetId === activeLink.targetId,
-        );
-      return {
-        mentionAnchors: { ...s.mentionAnchors, [id]: anchors },
-        ...(linkGone && { activeLink: null }),
-      };
+      const mentionAnchors = { ...s.mentionAnchors, [id]: anchors };
+      // A clicked edge goes away when its mention is deleted or retyped to another note.
+      return { mentionAnchors, highlight: pruneHighlight(s.highlight, s.nodes, mentionAnchors) };
     }),
   setHoveredMention: (hoveredMention) => set({ hoveredMention }),
-  setActiveLink: (activeLink) => set({ activeLink }),
+  setHighlight: (highlight) => set({ highlight }),
 }));

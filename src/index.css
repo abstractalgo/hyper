@@ -19,6 +19,14 @@ body {
 .react-flow__handle.note-handle {
   @apply size-1.5 min-h-0 min-w-0 border-0 bg-gray-400;
 }
+/* React Flow disables pointer events on non-connectable handles; re-enable for click-to-highlight,
+   with a larger invisible hit area around the 6px dot. */
+.react-flow__handle.note-handle-clickable {
+  @apply pointer-events-auto cursor-pointer hover:bg-amber-500;
+}
+.react-flow__handle.note-handle-clickable::before {
+  @apply absolute -inset-1.5 rounded-full content-[''];
+}
 
 /* The edge of a hovered @mention, or a clicked edge */
 .react-flow__edge.mention-edge-highlighted .react-flow__edge-path {

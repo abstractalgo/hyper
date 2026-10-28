@@ -4,7 +4,16 @@ import { useCanvasStore } from "../../store/canvas.ts";
 
 export function NoteMention({ noteId }: { noteId: string }) {
   const title = useCanvasStore((s) => s.nodes.find((n) => n.id === noteId)?.data.title);
-  const { fitView } = useReactFlow();
+  const { getInternalNode, getZoom, setCenter } = useReactFlow();
+
+  // Pan so the mentioned note is centered, keeping the current zoom level.
+  const panToNote = () => {
+    const node = getInternalNode(noteId);
+    if (!node) return;
+    const { x, y } = node.internals.positionAbsolute;
+    const { width = 0, height = 0 } = node.measured;
+    void setCenter(x + width / 2, y + height / 2, { zoom: getZoom(), duration: 300 });
+  };
 
   if (title === undefined) {
     return (
@@ -21,7 +30,7 @@ export function NoteMention({ noteId }: { noteId: string }) {
       // Read by useMentionAnchors to place this mention's edge handle.
       data-mention-target={noteId}
       title={`Go to “${title}”`}
-      onClick={() => void fitView({ nodes: [{ id: noteId }], duration: 300, maxZoom: 1 })}
+      onClick={panToNote}
     >
       @{title}
     </button>

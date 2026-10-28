@@ -41,6 +41,7 @@ function useMentionEdges(): Edge[] {
   const mentionAnchors = useCanvasStore((s) => s.mentionAnchors);
   const nodeIds = useCanvasStore(useShallow((s) => s.nodes.map((n) => n.id)));
   const measured = useStore(measuredSourceHandles);
+  const hovered = useCanvasStore((s) => s.hoveredMention);
 
   return useMemo(() => {
     const exists = new Set(nodeIds);
@@ -60,10 +61,15 @@ function useMentionEdges(): Edge[] {
               sourceHandle: a.handleId,
               target: a.targetId,
               targetHandle: TITLE_HANDLE_ID,
+              ...(hovered?.sourceId === source &&
+                hovered.handleId === a.handleId && {
+                  className: "mention-edge-hovered",
+                  zIndex: 1,
+                }),
             }))
         : [],
     );
-  }, [mentionAnchors, nodeIds, measured]);
+  }, [mentionAnchors, nodeIds, measured, hovered]);
 }
 
 export function Canvas() {

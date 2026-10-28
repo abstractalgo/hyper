@@ -20,6 +20,11 @@ body {
   @apply size-1.5 min-h-0 min-w-0 border-0 bg-gray-400;
 }
 
+/* The edge leading from a hovered @mention to its note */
+.react-flow__edge.mention-edge-hovered .react-flow__edge-path {
+  @apply stroke-amber-500 stroke-2;
+}
+
 /* Invisible resize hit area on the bottom-right corner; only the cursor hints at it. */
 .react-flow__resize-control.note-resize-control {
   @apply size-3 border-0 bg-transparent;

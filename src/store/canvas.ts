@@ -19,16 +19,21 @@ export type MentionAnchor = {
   y: number;
 };
 
+/** The `@mention` under the pointer: highlights its target note and the edge leading to it. */
+export type HoveredMention = { sourceId: string; handleId: string; targetId: string };
+
 type CanvasState = {
   nodes: EditorNode[];
   /** Mention anchors per note ID. Edges are derived from these; there are no manual edges. */
   mentionAnchors: Record<string, MentionAnchor[]>;
+  hoveredMention: HoveredMention | null;
   onNodesChange: (changes: NodeChange<EditorNode>[]) => void;
   addNode: (position: XYPosition) => void;
   /** Adds a note to the right of `sourceId`, below any notes already there. Returns its ID. */
   createNoteBeside: (sourceId: string, title: string) => string;
   updateNodeData: (id: string, data: Partial<EditorNodeData>) => void;
   setMentionAnchors: (id: string, anchors: MentionAnchor[]) => void;
+  setHoveredMention: (mention: HoveredMention | null) => void;
 };
 
 export const NOTE_WIDTH = 360;
@@ -86,6 +91,7 @@ export const createNote = (
 export const useCanvasStore = create<CanvasState>()((set, get) => ({
   nodes: [],
   mentionAnchors: {},
+  hoveredMention: null,
   onNodesChange: (changes) =>
     set((s) => {
       const removed = changes.flatMap((c) => (c.type === "remove" ? [c.id] : []));
@@ -110,4 +116,5 @@ export const useCanvasStore = create<CanvasState>()((set, get) => ({
     })),
   setMentionAnchors: (id, anchors) =>
     set((s) => ({ mentionAnchors: { ...s.mentionAnchors, [id]: anchors } })),
+  setHoveredMention: (hoveredMention) => set({ hoveredMention }),
 }));

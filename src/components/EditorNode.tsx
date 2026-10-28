@@ -22,6 +22,7 @@ export const EditorNodeView = memo(function EditorNodeView({
 }: NodeProps<EditorNode>) {
   const updateNodeData = useCanvasStore((s) => s.updateNodeData);
   const setMentionAnchors = useCanvasStore((s) => s.setMentionAnchors);
+  const isMentionHovered = useCanvasStore((s) => s.hoveredMention?.targetId === id);
   // Matches what Canvas draws: an incoming edge exists when another note mentions this one.
   const hasIncoming = useCanvasStore((s) =>
     Object.entries(s.mentionAnchors).some(
@@ -54,7 +55,11 @@ export const EditorNodeView = memo(function EditorNodeView({
     <div
       ref={rootRef}
       className={`relative flex h-full w-full flex-col rounded-lg border bg-white shadow-sm ${
-        selected ? "border-blue-500 ring-2 ring-blue-200" : "border-gray-200"
+        isMentionHovered
+          ? "border-amber-400 ring-4 ring-amber-200"
+          : selected
+            ? "border-blue-500 ring-2 ring-blue-200"
+            : "border-gray-200"
       }`}
     >
       <div className="relative shrink-0 cursor-grab rounded-t-lg border-b border-gray-200 bg-gray-50 px-3 py-1.5 text-xs font-medium text-gray-600 active:cursor-grabbing">

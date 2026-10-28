@@ -6,6 +6,18 @@ import type { MentionAnchor } from "../store/canvas.ts";
 /** Attribute set on each rendered mention whose target note exists (see NoteMention). */
 export const MENTION_TARGET_ATTR = "data-mention-target";
 
+/** Handle ID for the `index`-th mention in a note, in document order. */
+export const mentionHandleId = (index: number) => `mention-${index}`;
+
+/** The note containing a rendered mention element, and the ID of that mention's handle. */
+export function locateMention(el: Element): { sourceId: string; handleId: string } | null {
+  const node = el.closest<HTMLElement>(".react-flow__node");
+  const sourceId = node?.dataset.id;
+  if (!node || !sourceId) return null;
+  const index = Array.from(node.querySelectorAll(`[${MENTION_TARGET_ATTR}]`)).indexOf(el);
+  return index < 0 ? null : { sourceId, handleId: mentionHandleId(index) };
+}
+
 /** Smallest height a note can be resized to, mentions or not. */
 export const MIN_NOTE_HEIGHT = 120;
 
@@ -62,7 +74,7 @@ export function useMentionAnchors(
           );
           const mid = Math.min(Math.max(rect.top + rect.height / 2, view.top), view.bottom);
           return {
-            handleId: `mention-${i}`,
+            handleId: mentionHandleId(i),
             targetId: el.getAttribute(MENTION_TARGET_ATTR)!,
             y: Math.round((mid - rootTop) / zoom),
           };

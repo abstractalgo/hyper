@@ -1,6 +1,8 @@
 import { Dialog } from "@base-ui/react/dialog";
 import { SettingsIcon, XIcon } from "lucide-react";
-import { lazy, Suspense, useEffect, useState } from "react";
+import { lazy, Suspense, useEffect } from "react";
+
+import { useCanvasStore } from "../../store/canvas.ts";
 import { PopupContainerContext } from "./popups.tsx";
 
 // The tabs, forms and pickers are only needed once the dialog is opened.
@@ -10,7 +12,9 @@ const SettingsPanel = lazy(() => import("./SettingsPanel.tsx"));
 const SHORTCUT_LABEL = /Mac|iPhone|iPad/.test(navigator.userAgent) ? "⌘," : "Ctrl+,";
 
 export function SettingsDialog() {
-  const [open, setOpen] = useState(false);
+  // In the store so the command palette can open it too.
+  const open = useCanvasStore((s) => s.settingsOpen);
+  const setOpen = useCanvasStore((s) => s.setSettingsOpen);
 
   // Cmd+, (Ctrl+, elsewhere), the usual "Settings" shortcut, toggles the dialog.
   useEffect(() => {
@@ -22,7 +26,7 @@ export function SettingsDialog() {
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, []);
+  }, [setOpen]);
 
   return (
     <Dialog.Root open={open} onOpenChange={setOpen}>

@@ -1,6 +1,6 @@
-import { useReactFlow, useStoreApi } from "@xyflow/react";
 import { useEffect, useRef, type MouseEvent } from "react";
 
+import { useGoToNote } from "../../components/useGoToNote.ts";
 import { locateMention } from "../../components/useMentionAnchors.ts";
 import { NoteIcon } from "../../workspace/icons.tsx";
 import { OPTION_COLOR_CLASSES } from "../../workspace/model.ts";
@@ -9,9 +9,7 @@ import { useCanvasStore } from "../../store/canvas.ts";
 export function NoteMention({ noteId }: { noteId: string }) {
   const title = useCanvasStore((s) => s.nodes.find((n) => n.id === noteId)?.data.title);
   const color = useCanvasStore((s) => s.nodes.find((n) => n.id === noteId)?.data.color);
-  const { getInternalNode, getZoom, setCenter } = useReactFlow();
-  const flowStore = useStoreApi();
-  const setHighlight = useCanvasStore((s) => s.setHighlight);
+  const goToNote = useGoToNote();
   const setHoveredMention = useCanvasStore((s) => s.setHoveredMention);
   const isHovered = useRef(false);
 
@@ -34,17 +32,10 @@ export function NoteMention({ noteId }: { noteId: string }) {
   );
 
   // Pan so the mentioned note is centered (keeping the zoom level) and select it.
-  const goToNote = (e: MouseEvent) => {
+  const goToMentionedNote = (e: MouseEvent) => {
     // Otherwise the click reaches the note containing the mention, which React Flow selects.
     e.stopPropagation();
-    const node = getInternalNode(noteId);
-    if (!node) return;
-    const { x, y } = node.internals.positionAbsolute;
-    const { width = 0, height = 0 } = node.measured;
-    void setCenter(x + width / 2, y + height / 2, { zoom: getZoom(), duration: 300 });
-    flowStore.getState().addSelectedNodes([noteId]);
-    // A click on a note normally clears link highlights; this one no longer reaches the note.
-    setHighlight(null);
+    goToNote(noteId);
   };
 
   if (title === undefined) {
@@ -63,7 +54,7 @@ export function NoteMention({ noteId }: { noteId: string }) {
       }
       // Read by useMentionAnchors to place this mention's edge handle.
       data-mention-target={noteId}
-      onClick={goToNote}
+      onClick={goToMentionedNote}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >

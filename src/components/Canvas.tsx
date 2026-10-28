@@ -15,6 +15,7 @@ import { useShallow } from "zustand/react/shallow";
 
 import { isLinkHighlighted, NOTE_WIDTH, useCanvasStore } from "../store/canvas.ts";
 import { SettingsDialog } from "../workspace/ui/SettingsDialog.tsx";
+import { CommandPalette } from "./CommandPalette.tsx";
 import { EditorNodeView, TITLE_HANDLE_ID } from "./EditorNode.tsx";
 
 const nodeTypes: NodeTypes = { editor: EditorNodeView };
@@ -142,6 +143,7 @@ export function Canvas() {
       <Panel position="top-right">
         <SettingsDialog />
       </Panel>
+      <CommandPalette />
     </ReactFlow>
   );
 }

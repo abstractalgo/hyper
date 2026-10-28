@@ -74,7 +74,11 @@ type CanvasState = Board & {
   /** Set by clicking an edge or a note's incoming handle; cleared by clicking elsewhere. */
   highlight: Highlight | null;
   onNodesChange: (changes: NodeChange<EditorNode>[]) => void;
-  addNode: (position: XYPosition) => void;
+  /** Adds a note at `position`; returns its ID. */
+  addNode: (position: XYPosition) => string;
+  /** Whether the workspace settings dialog is open (not saved). */
+  settingsOpen: boolean;
+  setSettingsOpen: (open: boolean | ((open: boolean) => boolean)) => void;
   /** Adds a note to the right of `sourceId`, below any notes already there. Returns its ID. */
   createNoteBeside: (sourceId: string, title: string) => string;
   /**
@@ -325,10 +329,14 @@ export const useCanvasStore = create<CanvasState>()(
             highlight: pruneHighlight(s.highlight, nodes, mentionAnchors),
           };
         }),
-      addNode: (position) =>
-        set((s) => ({
-          nodes: [...s.nodes, createNote({ title: `Note ${s.nodes.length + 1}`, position })],
-        })),
+      addNode: (position) => {
+        const note = createNote({ title: `Note ${get().nodes.length + 1}`, position });
+        set((s) => ({ nodes: [...s.nodes, note] }));
+        return note.id;
+      },
+      settingsOpen: false,
+      setSettingsOpen: (open) =>
+        set((s) => ({ settingsOpen: typeof open === "function" ? open(s.settingsOpen) : open })),
       createNoteBeside: (sourceId, title) => {
         const { nodes } = get();
         const source = nodes.find((n) => n.id === sourceId);

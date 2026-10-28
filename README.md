@@ -16,6 +16,8 @@ they get structured fields: status, assignee, dates, labels, and anything else y
 - Drag notes by their title bar; drag the bottom-right corner to make a note wider or narrower.
   Notes always grow to fit their content, so nothing is ever hidden behind a scrollbar.
 - **Double-click a title to rename** a note. Every mention of it updates instantly.
+- **Press `Cmd+P`** (`Ctrl+P`) to jump to any note by fuzzy-searching its title. Start with `>` for
+  actions: create a note, open settings, delete the selected notes, zoom to fit, and more.
 
 ### Format with Markdown shortcuts
 

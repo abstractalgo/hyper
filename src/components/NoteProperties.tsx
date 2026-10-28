@@ -4,6 +4,7 @@ import { useCanvasStore } from "../store/canvas.ts";
 import type { FieldDef } from "../workspace/model.ts";
 import { FieldValueEditor } from "../workspace/ui/FieldValueEditor.tsx";
 import { PopupContainerContext, useViewportPortal } from "../workspace/ui/popups.tsx";
+import { FieldIcon } from "../workspace/icons.tsx";
 
 /** The note's schema fields as an editable label/value list, between title bar and text. */
 export function NoteProperties({ noteId }: { noteId: string }) {
@@ -28,8 +29,12 @@ export function NoteProperties({ noteId }: { noteId: string }) {
       <dl className="nodrag grid shrink-0 grid-cols-[minmax(4rem,auto)_1fr] items-center gap-x-2 gap-y-0.5 border-b border-gray-100 px-3 py-1.5">
         {fields.map((field) => (
           <div key={field.id} className="contents">
-            <dt className="truncate text-xs text-gray-500" title={field.name}>
-              {field.name}
+            <dt
+              className="flex min-w-0 items-center gap-1.5 text-xs text-gray-500"
+              title={field.name}
+            >
+              <FieldIcon field={field} className="size-3.5" />
+              <span className="truncate">{field.name}</span>
             </dt>
             <dd className="min-w-0">
               <FieldValueEditor

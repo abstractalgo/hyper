@@ -10,7 +10,9 @@ import {
   type FieldDef,
   type FieldType,
 } from "../model.ts";
+import { FieldIcon, FieldTypeIcon } from "../icons.tsx";
 import { Dropdown } from "./Dropdown.tsx";
+import { IconPicker } from "./IconPicker.tsx";
 import { FieldValueEditor } from "./FieldValueEditor.tsx";
 import { NoteSchemaMenu } from "../../components/NoteSchemaMenu.tsx";
 import { NotePill } from "./SelectEditor.tsx";
@@ -49,7 +51,7 @@ export function FieldsTab() {
         items={fields.map((f) => ({
           id: f.id,
           label: f.name,
-          detail: `${FIELD_TYPE_LABELS[f.type]}${f.multiple ? " · multiple" : ""}${f.required ? " · mandatory" : ""}`,
+          icon: <FieldIcon field={f} className="size-4" />,
         }))}
         selectedId={selectedId}
         onSelect={(id) => select(fields.find((f) => f.id === id)!)}
@@ -134,6 +136,26 @@ function FieldForm({
           className={textInputClass}
         />
       </FormRow>
+      <FormRow label="Icon" hint={draft.icon ? undefined : "Using the type's icon."}>
+        <div className="flex items-center gap-2">
+          <IconPicker
+            label="Choose icon"
+            onPick={(icon) => update({ icon })}
+            triggerClassName="flex size-8 items-center justify-center rounded border border-gray-300 hover:bg-gray-50"
+          >
+            <FieldIcon field={draft} className="size-4" />
+          </IconPicker>
+          {draft.icon && (
+            <button
+              type="button"
+              onClick={() => update({ icon: undefined })}
+              className="rounded px-1.5 py-1 text-sm text-gray-600 hover:bg-gray-100"
+            >
+              Use the type's icon
+            </button>
+          )}
+        </div>
+      </FormRow>
       <FormRow
         label="Type"
         hint={
@@ -150,7 +172,11 @@ function FieldForm({
           disabled={draft.builtIn || inUse}
           // The old default isn't meaningful for a new type.
           onChange={(value) => update({ type: value as FieldType, defaultValue: [] })}
-          items={FIELD_TYPES.map((t) => ({ value: t, label: FIELD_TYPE_LABELS[t] }))}
+          items={FIELD_TYPES.map((t) => ({
+            value: t,
+            label: FIELD_TYPE_LABELS[t],
+            icon: <FieldTypeIcon type={t} className="size-3.5" />,
+          }))}
         />
       </FormRow>
       {isSelect && (

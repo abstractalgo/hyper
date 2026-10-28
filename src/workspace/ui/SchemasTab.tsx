@@ -2,7 +2,7 @@ import { ArrowDownIcon, ArrowUpIcon, XIcon } from "lucide-react";
 import { useState } from "react";
 
 import { newId, useCanvasStore } from "../../store/canvas.ts";
-import { LucideByName, SchemaIcon } from "../icons.tsx";
+import { FieldIcon, LucideByName, SchemaIcon } from "../icons.tsx";
 import { FIELD_TYPE_LABELS, SCHEMA_COLOR_CLASSES, SCHEMA_COLORS, type Schema } from "../model.ts";
 import { Dropdown } from "./Dropdown.tsx";
 import { IconPicker } from "./IconPicker.tsx";
@@ -190,6 +190,7 @@ function SchemaForm({
             const locked = draft.builtIn && field.builtIn;
             return (
               <li key={field.id} className="flex items-center gap-2 px-2 py-1.5 text-sm">
+                <FieldIcon field={field} className="size-3.5" />
                 <span className="min-w-0 flex-1 truncate">
                   {field.name}
                   <span className="ml-2 text-xs text-gray-500">
@@ -242,6 +243,7 @@ function SchemaForm({
             items={available.map((f) => ({
               value: f.id,
               label: `${f.name} (${FIELD_TYPE_LABELS[f.type]})`,
+              icon: <FieldIcon field={f} className="size-3.5" />,
             }))}
             className="mt-2"
           />

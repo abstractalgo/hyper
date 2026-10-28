@@ -19,6 +19,21 @@ export const FIELD_TYPE_LABELS: Record<FieldType, string> = {
   select: "Select",
 };
 
+/** Each type's icon (Lucide names); also the icon of fields that don't set their own. */
+export const FIELD_TYPE_ICONS: Record<FieldType, string> = {
+  text: "type",
+  number: "hash",
+  icon: "smile",
+  image: "image",
+  date: "calendar",
+  datetime: "calendar-clock",
+  select: "list",
+};
+
+/** A field's icon: its own, or else its type's. */
+export const fieldIcon = (field: Pick<FieldDef, "icon" | "type">) =>
+  field.icon || FIELD_TYPE_ICONS[field.type];
+
 export const OPTION_COLORS = [
   "gray",
   "brown",
@@ -69,6 +84,8 @@ export type FieldDef = {
   required: boolean;
   /** Initial value for required fields (non-empty). Optional fields start empty. */
   defaultValue: FieldValue;
+  /** Lucide icon name; unset means the type's icon (see `fieldIcon`). */
+  icon?: string;
   /**
    * For `select` fields: the notes offered as options, in picker order. Any other note can still
    * be picked by searching; notes created from the picker are added here.

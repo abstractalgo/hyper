@@ -11,4 +11,3 @@ links have properties
 ref nodes (transclusion)
 Cmd+K search
 auto-save (no "Save field")
-icons for field types

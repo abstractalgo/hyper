@@ -2,7 +2,15 @@ import { StickyNoteIcon } from "lucide-react";
 import { DynamicIcon, iconNames, type IconName } from "lucide-react/dynamic";
 
 import { useCanvasStore } from "../store/canvas.ts";
-import { AVATAR_FIELD_ID, SCHEMA_COLOR_CLASSES, USER_SCHEMA_ID } from "./model.ts";
+import {
+  AVATAR_FIELD_ID,
+  FIELD_TYPE_ICONS,
+  fieldIcon,
+  SCHEMA_COLOR_CLASSES,
+  USER_SCHEMA_ID,
+  type FieldDef,
+  type FieldType,
+} from "./model.ts";
 
 export const ICON_NAMES: readonly IconName[] = iconNames;
 const KNOWN_ICONS = new Set<string>(iconNames);
@@ -23,6 +31,27 @@ export function LucideByName({
       aria-hidden={label ? undefined : true}
       className={className}
     />
+  );
+}
+
+/** A field's icon (its own, or its type's), in muted gray. */
+export function FieldIcon({
+  field,
+  className = "",
+}: IconProps & { field: Pick<FieldDef, "icon" | "type" | "name"> }) {
+  return (
+    <LucideByName
+      name={fieldIcon(field)}
+      label={field.name}
+      className={`shrink-0 text-gray-500 ${className}`}
+    />
+  );
+}
+
+/** A type's icon (Text, Number, …), in muted gray. */
+export function FieldTypeIcon({ type, className = "" }: IconProps & { type: FieldType }) {
+  return (
+    <LucideByName name={FIELD_TYPE_ICONS[type]} className={`shrink-0 text-gray-500 ${className}`} />
   );
 }
 

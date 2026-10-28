@@ -5,3 +5,4 @@ hover in properties also highlights the nodes in the canvas
   properties are just RTE nodes
   background color is a property of a node
 inline rendering of properties
+links have properties

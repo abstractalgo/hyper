@@ -144,7 +144,7 @@ export function Canvas() {
       fitViewOptions={{ maxZoom: 1 }}
     >
       <Background variant={BackgroundVariant.Dots} gap={16} />
-      <Controls showInteractive={false} />
+      <Controls showInteractive={false} showZoom={false} />
       <CommandPalette />
     </ReactFlow>
   );

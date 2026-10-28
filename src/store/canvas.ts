@@ -238,6 +238,9 @@ export const OPTION_NOTE_WIDTH = 240;
 
 export const newId = () => crypto.randomUUID();
 
+/** Title for a note created without one. */
+export const nextNoteTitle = (nodes: readonly EditorNode[]) => `Note ${nodes.length + 1}`;
+
 /** `items` with `item` replacing the one with its ID, or appended if there's none. */
 const upsertById = <T extends { id: string }>(items: readonly T[], item: T): T[] =>
   items.some((i) => i.id === item.id)
@@ -348,7 +351,7 @@ export const useCanvasStore = create<CanvasState>()(
           };
         }),
       addNode: (position) => {
-        const note = createNote({ title: `Note ${get().nodes.length + 1}`, position });
+        const note = createNote({ title: nextNoteTitle(get().nodes), position });
         set((s) => ({ nodes: [...s.nodes, note] }));
         return note.id;
       },

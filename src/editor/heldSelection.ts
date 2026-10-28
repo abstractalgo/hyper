@@ -1,5 +1,12 @@
 import {
+  $generateJSONFromSelectedNodes,
+  $generateNodesFromSerializedNodes,
+  $insertGeneratedNodes,
+} from "@lexical/clipboard";
+import { createHeadlessEditor } from "@lexical/headless";
+import {
   $getNodeByKey,
+  $getRoot,
   $getSelection,
   $isRangeSelection,
   $setSelection,
@@ -10,6 +17,7 @@ import {
 } from "lexical";
 
 import { $createNoteMentionNode } from "./mentions/NoteMentionNode";
+import { EDITOR_NODES } from "./nodes";
 
 /**
  * A note editor's selection, held while focus is elsewhere (e.g. in the command palette): the
@@ -73,4 +81,28 @@ export function replaceWithMention(held: HeldSelection, noteId: string) {
     selection.insertNodes([mention]);
     mention.selectNext();
   });
+}
+
+/**
+ * The held selection's content (formatting, lists, mentions…) as a note's serialized editor state,
+ * the way copy and paste would carry it over.
+ */
+export function selectionAsContent(held: HeldSelection): string {
+  const { nodes } = held.editor.read(() =>
+    $generateJSONFromSelectedNodes(held.editor, held.selection),
+  );
+  const editor = createHeadlessEditor({
+    nodes: EDITOR_NODES,
+    onError: (error) => {
+      throw error;
+    },
+  });
+  editor.update(
+    () => {
+      const selection = $getRoot().select();
+      $insertGeneratedNodes(editor, $generateNodesFromSerializedNodes(nodes), selection);
+    },
+    { discrete: true },
+  );
+  return JSON.stringify(editor.getEditorState().toJSON());
 }

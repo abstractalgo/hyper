@@ -4,6 +4,7 @@ import { go as fuzzySearch } from "fuzzysort";
 import {
   ArrowLeftRightIcon,
   TextCursorInputIcon,
+  TextSelectIcon,
   FocusIcon,
   PlusIcon,
   ScanIcon,
@@ -19,9 +20,10 @@ import {
   holdEditorSelection,
   replaceWithMention,
   restoreEditorSelection,
+  selectionAsContent,
   type HeldSelection,
 } from "../editor/heldSelection";
-import { NOTE_WIDTH, openWorkspace, useCanvasStore } from "../store/canvas";
+import { nextNoteTitle, NOTE_WIDTH, openWorkspace, useCanvasStore } from "../store/canvas";
 import { useWorkspaces } from "../store/workspaces";
 import { NoteIcon } from "../workspace/icons";
 import { ResultList, useListNavigation } from "../workspace/ui/ResultList";
@@ -30,7 +32,12 @@ import { useGoToNote } from "./useGoToNote";
 const IS_MAC = /Mac|iPhone|iPad/.test(navigator.userAgent);
 const MOD = IS_MAC ? "⌘" : "Ctrl+";
 const MAX_NOTES = 50;
-const SELECTION_ACTION = "create-from-selection";
+/** Actions on the editor selection, listed first (in this order) whenever they match. */
+const SELECTION_ACTIONS = ["create-titled", "create-from-selection"];
+const selectionRank = (key: string) => {
+  const i = SELECTION_ACTIONS.indexOf(key);
+  return i < 0 ? SELECTION_ACTIONS.length : i;
+};
 
 type Row = {
   key: string;
@@ -120,6 +127,7 @@ function PaletteBody({
   const schemas = useCanvasStore((s) => s.schemas);
   const addNode = useCanvasStore((s) => s.addNode);
   const createNoteBeside = useCanvasStore((s) => s.createNoteBeside);
+  const updateNodeData = useCanvasStore((s) => s.updateNodeData);
   const setSettingsOpen = useCanvasStore((s) => s.setSettingsOpen);
   const { screenToFlowPosition, deleteElements, fitView, zoomIn, zoomOut, zoomTo } = useReactFlow();
   const goToNote = useGoToNote();
@@ -128,15 +136,27 @@ function PaletteBody({
   const workspaces = useWorkspaces((s) => s.workspaces);
   const activeWorkspaceId = useWorkspaces((s) => s.activeId);
   const actions: Action[] = [
-    // Selected text becomes a note of its own, mentioned where the text was.
+    // Selected text becomes a note of its own (as its title, or as its content), mentioned where
+    // the text was.
     ...(held?.text
       ? [
           {
-            key: SELECTION_ACTION,
-            label: `Create note “${held.text}”`,
+            key: "create-titled",
+            label: `Create note titled “${held.text}”`,
             Icon: TextCursorInputIcon,
             run: () => {
               const id = createNoteBeside(held.noteId, held.text);
+              requestAnimationFrame(() => replaceWithMention(held, id));
+            },
+          },
+          {
+            key: "create-from-selection",
+            label: "Create note from selection",
+            Icon: TextSelectIcon,
+            run: () => {
+              const content = selectionAsContent(held);
+              const id = createNoteBeside(held.noteId, nextNoteTitle(nodes));
+              updateNodeData(id, { content });
               requestAnimationFrame(() => replaceWithMention(held, id));
             },
           },
@@ -222,9 +242,7 @@ function PaletteBody({
         ? fuzzySearch(search, actions, { key: "label", threshold: 0 })
             .map((r) => r.obj)
             // Acting on the selection stays first whenever it matches (above "Create new note").
-            .toSorted(
-              (a, b) => Number(b.key === SELECTION_ACTION) - Number(a.key === SELECTION_ACTION),
-            )
+            .toSorted((a, b) => selectionRank(a.key) - selectionRank(b.key))
         : actions
       ).map((a) => ({
         key: a.key,

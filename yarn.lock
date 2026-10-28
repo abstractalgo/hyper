@@ -234,7 +234,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@lexical/clipboard@npm:0.52.0":
+"@lexical/clipboard@npm:0.52.0, @lexical/clipboard@npm:^0.52.0":
   version: 0.52.0
   resolution: "@lexical/clipboard@npm:0.52.0"
   dependencies:
@@ -2074,6 +2074,7 @@ __metadata:
   resolution: "hyper@workspace:."
   dependencies:
     "@base-ui/react": "npm:^1.9.0"
+    "@lexical/clipboard": "npm:^0.52.0"
     "@lexical/headless": "npm:^0.52.0"
     "@lexical/link": "npm:^0.52.0"
     "@lexical/list": "npm:^0.52.0"

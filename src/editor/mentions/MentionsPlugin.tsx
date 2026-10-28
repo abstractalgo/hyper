@@ -10,8 +10,8 @@ import { $createTextNode, type TextNode } from "lexical";
 import { useMemo, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 
-import { NoteKindIcon } from "../../notes/kinds.tsx";
-import { useCanvasStore, type NoteKind } from "../../store/canvas.ts";
+import { useCanvasStore } from "../../store/canvas.ts";
+import { NoteIcon } from "../../workspace/icons.tsx";
 import { MentionMenu } from "./MentionMenu.tsx";
 import { $createNoteMentionNode } from "./NoteMentionNode.tsx";
 
@@ -40,7 +40,6 @@ const mentionTrigger: TriggerFn = (text) => {
 class NoteOption extends MenuOption {
   constructor(
     readonly noteId: string,
-    readonly kind: NoteKind,
     readonly label: ReactNode,
   ) {
     super(noteId);
@@ -92,8 +91,8 @@ const renderMenu: MenuRenderFn<MentionOption> = (
                 </>
               ) : (
                 <>
-                  <NoteKindIcon
-                    kind={option.kind}
+                  <NoteIcon
+                    noteId={option.noteId}
                     className="mr-1.5 inline-block size-3.5 align-[-0.15em]"
                   />
                   {option.label}
@@ -124,16 +123,14 @@ export function MentionsPlugin({ noteId }: MentionsPluginProps) {
     const others = nodes.filter((n) => n.id !== noteId);
     const search = query.trim();
     if (!search) {
-      return others
-        .slice(0, MAX_MATCHES)
-        .map((n) => new NoteOption(n.id, n.data.kind, n.data.title));
+      return others.slice(0, MAX_MATCHES).map((n) => new NoteOption(n.id, n.data.title));
     }
 
     const matches = fuzzySearch(search, others, {
       key: (n) => n.data.title,
       limit: MAX_MATCHES,
       threshold: 0,
-    }).map((r) => new NoteOption(r.obj.id, r.obj.data.kind, fuzzyHighlight(r, renderMatch)));
+    }).map((r) => new NoteOption(r.obj.id, fuzzyHighlight(r, renderMatch)));
     // Offer to create a note unless one (other than this one) already has exactly this title.
     const exists = nodes.some((n) => n.data.title.toLowerCase() === search.toLowerCase());
     return exists ? matches : [...matches, new CreateNoteOption(search)];

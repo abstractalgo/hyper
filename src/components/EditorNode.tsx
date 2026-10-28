@@ -8,15 +8,12 @@ import {
 import { memo, useCallback, useLayoutEffect, useRef } from "react";
 
 import { RichTextEditor } from "../editor/RichTextEditor.tsx";
-import {
-  isNoteHighlighted,
-  useCanvasStore,
-  type EditorNode,
-  type NoteKind,
-} from "../store/canvas.ts";
-import { NoteKindMenu } from "./NoteKindMenu.tsx";
+import { isNoteHighlighted, useCanvasStore, type EditorNode } from "../store/canvas.ts";
+import { NoteProperties } from "./NoteProperties.tsx";
+import { NoteSchemaMenu } from "./NoteSchemaMenu.tsx";
 import { NoteTitle } from "./NoteTitle.tsx";
 import { useMentionAnchors } from "./useMentionAnchors.ts";
+import { useScrollWithoutPanning } from "./useScrollWithoutPanning.ts";
 
 /** Every note receives incoming mention edges on this handle, level with its title. */
 export const TITLE_HANDLE_ID = "title";
@@ -41,6 +38,7 @@ export const EditorNodeView = memo(function EditorNodeView({
   const rootRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const { anchors, minHeight } = useMentionAnchors(rootRef, contentRef);
+  useScrollWithoutPanning(rootRef);
 
   // Handles moved, appeared or disappeared: have React Flow re-measure them, and publish the
   // anchors that edges are derived from (Canvas waits for the measurement before drawing).
@@ -53,9 +51,10 @@ export const EditorNodeView = memo(function EditorNodeView({
     (content: string) => updateNodeData(id, { content }),
     [id, updateNodeData],
   );
-  const handleKindChange = useCallback(
-    (kind: NoteKind) => updateNodeData(id, { kind }),
-    [id, updateNodeData],
+  const setNoteSchema = useCanvasStore((s) => s.setNoteSchema);
+  const handleSchemaChange = useCallback(
+    (schemaId: string | null) => setNoteSchema(id, schemaId),
+    [id, setNoteSchema],
   );
   const handleRename = useCallback(
     (title: string) => updateNodeData(id, { title }),
@@ -74,7 +73,7 @@ export const EditorNodeView = memo(function EditorNodeView({
       }`}
     >
       <div className="relative flex shrink-0 cursor-grab items-center gap-1.5 rounded-t-lg border-b border-gray-200 bg-gray-50 py-1 pr-3 pl-2 text-xs font-medium text-gray-600 active:cursor-grabbing">
-        <NoteKindMenu kind={data.kind} onChange={handleKindChange} />
+        <NoteSchemaMenu schemaId={data.schemaId} onChange={handleSchemaChange} />
         <div className="min-w-0 flex-1">
           <NoteTitle title={data.title} onRename={handleRename} />
         </div>
@@ -92,8 +91,13 @@ export const EditorNodeView = memo(function EditorNodeView({
           }}
         />
       </div>
-      {/* nodrag/nowheel stop React Flow from hijacking text selection and scrolling */}
-      <div ref={contentRef} className="nodrag nowheel min-h-0 flex-1 cursor-text overflow-y-auto">
+      <NoteProperties noteId={id} />
+      {/* nodrag: selecting text shouldn't drag the note (scrolling: useScrollWithoutPanning) */}
+      <div
+        ref={contentRef}
+        data-local-scroll
+        className="nodrag min-h-0 flex-1 cursor-text overflow-y-auto"
+      >
         <RichTextEditor noteId={id} initialContent={data.content} onChange={handleChange} />
       </div>
       {anchors.map((anchor) => (

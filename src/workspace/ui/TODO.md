@@ -1,0 +1,6 @@
+type system with nodes (references)
+auto-increment for task IDs
+configurable custom rendering of schemas in nodes and @mentions
+hover in properties also highlights the nodes in the canvas
+properties are just RTE nodes
+  inline rendering of properties

@@ -2,6 +2,7 @@ import {
   Background,
   BackgroundVariant,
   Controls,
+  Panel,
   ReactFlow,
   useReactFlow,
   useStore,
@@ -12,11 +13,8 @@ import {
 import { useMemo, type MouseEvent } from "react";
 import { useShallow } from "zustand/react/shallow";
 
-import {
-  isLinkHighlighted,
-  NOTE_WIDTH,
-  useCanvasStore,
-} from "../store/canvas.ts";
+import { isLinkHighlighted, NOTE_WIDTH, useCanvasStore } from "../store/canvas.ts";
+import { SettingsDialog } from "../workspace/ui/SettingsDialog.tsx";
 import { EditorNodeView, TITLE_HANDLE_ID } from "./EditorNode.tsx";
 
 const nodeTypes: NodeTypes = { editor: EditorNodeView };
@@ -95,11 +93,7 @@ export function Canvas() {
   // Double-clicking empty canvas (the pane itself, not a note or control) adds a note there,
   // with its title bar centered under the cursor.
   const handleDoubleClick = (e: MouseEvent) => {
-    if (
-      !(e.target instanceof Element) ||
-      !e.target.classList.contains("react-flow__pane")
-    )
-      return;
+    if (!(e.target instanceof Element) || !e.target.classList.contains("react-flow__pane")) return;
     const { x, y } = screenToFlowPosition({ x: e.clientX, y: e.clientY });
     addNode({ x: x - NOTE_WIDTH / 2, y: y - TITLE_BAR_HEIGHT / 2 });
   };
@@ -134,6 +128,9 @@ export function Canvas() {
     >
       <Background variant={BackgroundVariant.Dots} gap={16} />
       <Controls showInteractive={false} />
+      <Panel position="top-right">
+        <SettingsDialog />
+      </Panel>
     </ReactFlow>
   );
 }

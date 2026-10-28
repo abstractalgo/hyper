@@ -3,6 +3,7 @@ import { useReactFlow } from "@xyflow/react";
 import { go as fuzzySearch } from "fuzzysort";
 import {
   ArrowLeftRightIcon,
+  TextCursorInputIcon,
   FocusIcon,
   PlusIcon,
   ScanIcon,
@@ -12,8 +13,14 @@ import {
   ZoomOutIcon,
   type LucideIcon,
 } from "lucide-react";
-import { useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 
+import {
+  holdEditorSelection,
+  replaceWithMention,
+  restoreEditorSelection,
+  type HeldSelection,
+} from "../editor/heldSelection";
 import { NOTE_WIDTH, openWorkspace, useCanvasStore } from "../store/canvas";
 import { useWorkspaces } from "../store/workspaces";
 import { NoteIcon } from "../workspace/icons";
@@ -23,6 +30,7 @@ import { useGoToNote } from "./useGoToNote";
 const IS_MAC = /Mac|iPhone|iPad/.test(navigator.userAgent);
 const MOD = IS_MAC ? "⌘" : "Ctrl+";
 const MAX_NOTES = 50;
+const SELECTION_ACTION = "create-from-selection";
 
 type Row = {
   key: string;
@@ -32,9 +40,18 @@ type Row = {
   /** Shown on the right: a note's type, or an action's shortcut. */
   hint?: string;
   run: () => void;
+  /** Whether focus goes back to the editor selection the palette was opened from. */
+  returnsToEditor?: boolean;
 };
 
-type Action = { key: string; label: string; Icon: LucideIcon; hint?: string; run: () => void };
+type Action = {
+  key: string;
+  label: string;
+  Icon: LucideIcon;
+  hint?: string;
+  run: () => void;
+  returnsToEditor?: boolean;
+};
 
 /**
  * Cmd+P (Ctrl+P elsewhere): fuzzy-search notes by title and jump to one. Starting the query with
@@ -42,29 +59,48 @@ type Action = { key: string; label: string; Icon: LucideIcon; hint?: string; run
  */
 export function CommandPalette() {
   const [open, setOpen] = useState(false);
+  // The editor selection the palette was opened from (if any), to return to afterwards.
+  const [held, setHeld] = useState<HeldSelection | null>(null);
+
+  const close = useCallback(
+    (returnToEditor: boolean) => {
+      setOpen(false);
+      // After the dialog has let go of focus.
+      if (returnToEditor && held) requestAnimationFrame(() => restoreEditorSelection(held));
+    },
+    [held],
+  );
 
   useEffect(() => {
     const onKeyDown = (e: globalThis.KeyboardEvent) => {
       if (e.key.toLowerCase() === "p" && (e.metaKey || e.ctrlKey) && !e.altKey && !e.shiftKey) {
         // Overrides the browser's Print.
         e.preventDefault();
-        setOpen((o) => !o);
+        if (open) {
+          close(true);
+        } else {
+          setHeld(holdEditorSelection());
+          setOpen(true);
+        }
       }
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, []);
+  }, [open, close]);
 
   return (
-    <Dialog.Root open={open} onOpenChange={setOpen}>
+    // Dismissing it (Escape, clicking outside) returns to the editor selection.
+    <Dialog.Root open={open} onOpenChange={(next) => (next ? setOpen(true) : close(true))}>
       <Dialog.Portal>
         <Dialog.Backdrop className="fixed inset-0 z-50 bg-black/20" />
         <Dialog.Popup
           aria-label="Command palette"
+          // Focus is handed back by `close` when the palette was opened from an editor.
+          finalFocus={!held}
           className="fixed top-[15vh] left-1/2 z-50 flex max-h-[60vh] w-[min(560px,calc(100vw-2rem))] -translate-x-1/2 flex-col overflow-hidden rounded-lg border border-gray-200 bg-white shadow-2xl outline-none"
         >
           {/* Mounted only while open, so every open starts with an empty search. */}
-          <PaletteBody onClose={() => setOpen(false)} />
+          <PaletteBody held={held} onClose={close} />
         </Dialog.Popup>
       </Dialog.Portal>
     </Dialog.Root>
@@ -72,11 +108,18 @@ export function CommandPalette() {
 }
 
 /** The search box and results; its state lives only as long as the palette is open. */
-function PaletteBody({ onClose }: { onClose: () => void }) {
+function PaletteBody({
+  held,
+  onClose,
+}: {
+  held: HeldSelection | null;
+  onClose: (returnToEditor: boolean) => void;
+}) {
   const [query, setQuery] = useState("");
   const nodes = useCanvasStore((s) => s.nodes);
   const schemas = useCanvasStore((s) => s.schemas);
   const addNode = useCanvasStore((s) => s.addNode);
+  const createNoteBeside = useCanvasStore((s) => s.createNoteBeside);
   const setSettingsOpen = useCanvasStore((s) => s.setSettingsOpen);
   const { screenToFlowPosition, deleteElements, fitView, zoomIn, zoomOut, zoomTo } = useReactFlow();
   const goToNote = useGoToNote();
@@ -85,6 +128,20 @@ function PaletteBody({ onClose }: { onClose: () => void }) {
   const workspaces = useWorkspaces((s) => s.workspaces);
   const activeWorkspaceId = useWorkspaces((s) => s.activeId);
   const actions: Action[] = [
+    // Selected text becomes a note of its own, mentioned where the text was.
+    ...(held?.text
+      ? [
+          {
+            key: SELECTION_ACTION,
+            label: `Create note “${held.text}”`,
+            Icon: TextCursorInputIcon,
+            run: () => {
+              const id = createNoteBeside(held.noteId, held.text);
+              requestAnimationFrame(() => replaceWithMention(held, id));
+            },
+          },
+        ]
+      : []),
     {
       key: "create",
       label: "Create new note",
@@ -123,24 +180,28 @@ function PaletteBody({ onClose }: { onClose: () => void }) {
     {
       key: "fit",
       label: "Zoom to fit",
+      returnsToEditor: true,
       Icon: FocusIcon,
       run: () => void fitView({ duration: 300, maxZoom: 1 }),
     },
     {
       key: "zoom-in",
       label: "Zoom in",
+      returnsToEditor: true,
       Icon: ZoomInIcon,
       run: () => void zoomIn({ duration: 200 }),
     },
     {
       key: "zoom-out",
       label: "Zoom out",
+      returnsToEditor: true,
       Icon: ZoomOutIcon,
       run: () => void zoomOut({ duration: 200 }),
     },
     {
       key: "zoom-100",
       label: "Zoom to 100%",
+      returnsToEditor: true,
       Icon: ScanIcon,
       run: () => void zoomTo(1, { duration: 200 }),
     },
@@ -158,7 +219,12 @@ function PaletteBody({ onClose }: { onClose: () => void }) {
   const search = (actionMode ? query.slice(1) : query).trim();
   const rows: Row[] = actionMode
     ? (search
-        ? fuzzySearch(search, actions, { key: "label", threshold: 0 }).map((r) => r.obj)
+        ? fuzzySearch(search, actions, { key: "label", threshold: 0 })
+            .map((r) => r.obj)
+            // Acting on the selection stays first whenever it matches (above "Create new note").
+            .toSorted(
+              (a, b) => Number(b.key === SELECTION_ACTION) - Number(a.key === SELECTION_ACTION),
+            )
         : actions
       ).map((a) => ({
         key: a.key,
@@ -166,6 +232,7 @@ function PaletteBody({ onClose }: { onClose: () => void }) {
         icon: <a.Icon className="size-4 text-gray-500" />,
         hint: a.hint,
         run: a.run,
+        returnsToEditor: a.returnsToEditor,
       }))
     : (search
         ? fuzzySearch(search, nodes, {
@@ -183,7 +250,7 @@ function PaletteBody({ onClose }: { onClose: () => void }) {
       }));
 
   const runRow = (row: Row) => {
-    onClose();
+    onClose(row.returnsToEditor ?? false);
     row.run();
   };
   const nav = useListNavigation(rows, runRow);

@@ -2,7 +2,6 @@ import {
   Background,
   BackgroundVariant,
   Controls,
-  Panel,
   ReactFlow,
   useReactFlow,
   useStore,
@@ -20,7 +19,6 @@ import {
   oppositeSide,
   useCanvasStore,
 } from "../store/canvas";
-import { SettingsDialog } from "../workspace/ui/SettingsDialog";
 import { CommandPalette } from "./CommandPalette";
 import { EditorNodeView, TITLE_HANDLE_IDS } from "./EditorNode";
 
@@ -147,9 +145,6 @@ export function Canvas() {
     >
       <Background variant={BackgroundVariant.Dots} gap={16} />
       <Controls showInteractive={false} />
-      <Panel position="top-right">
-        <SettingsDialog />
-      </Panel>
       <CommandPalette />
     </ReactFlow>
   );

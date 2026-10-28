@@ -123,7 +123,7 @@ type FieldBase = {
 };
 
 /** Fields of one type: their default holds that type's values; selects also list their options. */
-export type FieldDefOf<T extends FieldType> = FieldBase & {
+type FieldDefOf<T extends FieldType> = FieldBase & {
   type: T;
   /** Initial value for required fields (non-empty). Optional fields start empty. */
   defaultValue: FieldAtomByType[T][];

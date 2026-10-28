@@ -2,6 +2,7 @@ import { Dialog } from "@base-ui/react/dialog";
 import { useReactFlow } from "@xyflow/react";
 import { go as fuzzySearch } from "fuzzysort";
 import {
+  ArrowLeftRightIcon,
   FocusIcon,
   PlusIcon,
   ScanIcon,
@@ -13,7 +14,8 @@ import {
 } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 
-import { NOTE_WIDTH, useCanvasStore } from "../store/canvas";
+import { NOTE_WIDTH, openWorkspace, useCanvasStore } from "../store/canvas";
+import { useWorkspaces } from "../store/workspaces";
 import { NoteIcon } from "../workspace/icons";
 import { ResultList, useListNavigation } from "../workspace/ui/ResultList";
 import { useGoToNote } from "./useGoToNote";
@@ -80,6 +82,8 @@ function PaletteBody({ onClose }: { onClose: () => void }) {
   const goToNote = useGoToNote();
 
   const selected = nodes.filter((n) => n.selected);
+  const workspaces = useWorkspaces((s) => s.workspaces);
+  const activeWorkspaceId = useWorkspaces((s) => s.activeId);
   const actions: Action[] = [
     {
       key: "create",
@@ -140,6 +144,14 @@ function PaletteBody({ onClose }: { onClose: () => void }) {
       Icon: ScanIcon,
       run: () => void zoomTo(1, { duration: 200 }),
     },
+    ...workspaces
+      .filter((w) => w.id !== activeWorkspaceId)
+      .map((w) => ({
+        key: `workspace:${w.id}`,
+        label: `Switch to workspace “${w.name}”`,
+        Icon: ArrowLeftRightIcon,
+        run: () => void openWorkspace(w.id),
+      })),
   ];
 
   const actionMode = query.startsWith(">");

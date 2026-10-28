@@ -3,18 +3,21 @@ import { SettingsIcon, XIcon } from "lucide-react";
 import { lazy, Suspense, useEffect } from "react";
 
 import { useCanvasStore } from "../../store/canvas";
+import { useWorkspaces } from "../../store/workspaces";
 import { PopupContainerContext } from "./popups";
 
 // The tabs, forms and pickers are only needed once the dialog is opened.
 const SettingsPanel = lazy(() => import("./SettingsPanel"));
 
-/** Workspace settings: custom fields and note schemas. Opened from the canvas gear button. */
 const SHORTCUT_LABEL = /Mac|iPhone|iPad/.test(navigator.userAgent) ? "⌘," : "Ctrl+,";
 
+/** The active workspace's settings: fields, types and icons. Opened from the gear button. */
 export function SettingsDialog() {
   // In the store so the command palette can open it too.
   const open = useCanvasStore((s) => s.settingsOpen);
   const setOpen = useCanvasStore((s) => s.setSettingsOpen);
+  const activeId = useWorkspaces((s) => s.activeId);
+  const name = useWorkspaces((s) => s.workspaces.find((w) => w.id === activeId)?.name);
 
   // Cmd+, (Ctrl+, elsewhere), the usual "Settings" shortcut, toggles the dialog.
   useEffect(() => {
@@ -43,6 +46,7 @@ export function SettingsDialog() {
           <div className="flex items-center justify-between border-b border-gray-200 px-4 py-3">
             <Dialog.Title className="text-base font-semibold text-gray-900">
               Workspace settings
+              <span className="font-normal text-gray-500"> · {name}</span>
             </Dialog.Title>
             <Dialog.Close
               aria-label="Close"
@@ -54,7 +58,8 @@ export function SettingsDialog() {
           <Suspense fallback={<p className="p-4 text-sm text-gray-500">Loading…</p>}>
             {/* Popups in settings (e.g. a note's type & color menu) open over the dialog. */}
             <PopupContainerContext.Provider value={document.body}>
-              <SettingsPanel />
+              {/* Per workspace: no form keeps a draft from the previous one. */}
+              <SettingsPanel key={activeId} />
             </PopupContainerContext.Provider>
           </Suspense>
         </Dialog.Popup>

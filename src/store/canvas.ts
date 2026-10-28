@@ -8,8 +8,8 @@ import {
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 
-import { avatarsToIcons } from "./avatarsToIcons";
 import { debouncedLocalStorage } from "./debouncedStorage";
+import { activeWorkspace, boardKey, useWorkspaces, type SampleId } from "./workspaces";
 import {
   BUILT_IN_SCHEMAS,
   conformValue,
@@ -56,6 +56,8 @@ export type MentionLink = { sourceId: string; handleId: string; targetId: string
 /** What a click has highlighted: one edge, or every edge coming into a note. */
 export type Highlight = { kind: "link"; link: MentionLink } | { kind: "incoming"; noteId: string };
 
+export type SettingsTab = "fields" | "schemas" | "icons" | "workspace";
+
 /** Everything that makes up a board: what's saved, and what the sample provides. */
 export type Board = {
   nodes: EditorNode[];
@@ -81,6 +83,9 @@ type CanvasState = Board & {
   /** Whether the workspace settings dialog is open (not saved). */
   settingsOpen: boolean;
   setSettingsOpen: (open: boolean | ((open: boolean) => boolean)) => void;
+  /** The settings dialog's tab, kept while it's closed. */
+  settingsTab: SettingsTab;
+  setSettingsTab: (tab: SettingsTab) => void;
   /** Adds a note to the right of `sourceId`, below any notes already there. Returns its ID. */
   createNoteBeside: (sourceId: string, title: string) => string;
   /**
@@ -282,18 +287,25 @@ const persistedNode = ({ id, type, position, width, data }: EditorNode): EditorN
 const withoutHeight = (nodes: EditorNode[]) =>
   nodes.map((n) => (n.height === undefined ? n : { ...n, height: undefined }));
 
+/** A workspace's state before its board is loaded (what's left of the previous one is reset). */
+const BLANK = {
+  initialized: false,
+  viewport: null,
+  nodes: [],
+  fields: [],
+  customIcons: [],
+  schemas: BUILT_IN_SCHEMAS,
+  mentionAnchors: {},
+  hoveredMention: null,
+  highlight: null,
+} satisfies Partial<CanvasState>;
+
+const boardStorage = createJSONStorage<Partial<CanvasState>>(() => debouncedLocalStorage());
+
 export const useCanvasStore = create<CanvasState>()(
   persist(
     (set, get) => ({
-      initialized: false,
-      viewport: null,
-      nodes: [],
-      fields: [],
-      customIcons: [],
-      schemas: BUILT_IN_SCHEMAS,
-      mentionAnchors: {},
-      hoveredMention: null,
-      highlight: null,
+      ...BLANK,
       onNodesChange: (changes) =>
         set((s) => {
           const removed = changes.flatMap((c) => (c.type === "remove" ? [c.id] : []));
@@ -343,6 +355,8 @@ export const useCanvasStore = create<CanvasState>()(
       settingsOpen: false,
       setSettingsOpen: (open) =>
         set((s) => ({ settingsOpen: typeof open === "function" ? open(s.settingsOpen) : open })),
+      settingsTab: "fields",
+      setSettingsTab: (settingsTab) => set({ settingsTab }),
       createNoteBeside: (sourceId, title) => {
         const { nodes } = get();
         const source = nodes.find((n) => n.id === sourceId);
@@ -526,11 +540,10 @@ export const useCanvasStore = create<CanvasState>()(
         }),
     }),
     {
-      name: "hyper-board",
+      // The active workspace's board; switching workspaces points this at another one.
+      name: boardKey(activeWorkspace().id),
       version: 10,
-      // Saved boards from before custom icons get converted once, on load.
-      migrate: (persisted) => avatarsToIcons(persisted as CanvasState),
-      storage: createJSONStorage(() => debouncedLocalStorage()),
+      storage: boardStorage,
       partialize: (s) => ({
         initialized: s.initialized,
         viewport: s.viewport,
@@ -542,6 +555,41 @@ export const useCanvasStore = create<CanvasState>()(
     },
   ),
 );
+
+const SAMPLE_BOARDS: Record<SampleId, () => Promise<Board>> = {
+  ledgerly: () => import("../sample/ledgerly").then((m) => m.createLedgerlyBoard()),
+  research: () => import("../sample/research").then((m) => m.createResearchBoard()),
+  "group-theory": () => import("../sample/groupTheory").then((m) => m.createGroupTheoryBoard()),
+};
+
+/**
+ * Makes `workspaceId` the active workspace: loads its saved board, or (the first time it's
+ * opened) its sample or an empty board. Samples, with Lexical's headless editor, are only loaded
+ * when they're needed.
+ */
+export async function openWorkspace(workspaceId: string) {
+  const workspace = useWorkspaces.getState().workspaces.find((w) => w.id === workspaceId);
+  if (!workspace) return;
+  const name = boardKey(workspaceId);
+  const saved = (await boardStorage!.getItem(name))?.state;
+  const board = saved?.initialized
+    ? null
+    : workspace.sample
+      ? await SAMPLE_BOARDS[workspace.sample]()
+      : { nodes: [], fields: [], schemas: BUILT_IN_SCHEMAS, customIcons: [] };
+  // From here on, synchronously: the store is saved to the new key from the first change.
+  useCanvasStore.persist.setOptions({ name });
+  useCanvasStore.setState({ ...BLANK, ...saved });
+  if (board) useCanvasStore.getState().loadBoard(board);
+  useWorkspaces.getState().setActive(workspaceId);
+}
+
+/** Deletes a workspace and its saved board (not the active one). */
+export function deleteWorkspace(workspaceId: string) {
+  if (workspaceId === useWorkspaces.getState().activeId) return;
+  boardStorage!.removeItem(boardKey(workspaceId));
+  useWorkspaces.getState().remove(workspaceId);
+}
 
 /**
  * One property of a note's data, by note ID (undefined if the note doesn't exist). Re-renders only

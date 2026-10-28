@@ -46,21 +46,31 @@ export function NoteMention({ noteId }: { noteId: string }) {
     );
   }
 
+  // A span rather than a <button>: buttons lay out as inline blocks, so a long mention would wrap
+  // inside its own box instead of with the text around it.
   return (
-    <button
-      type="button"
+    <span
+      // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- see above
+      role="button"
+      tabIndex={0}
       className={
         color ? `rte-mention rte-mention-colored ${NOTE_COLOR_CLASSES[color]}` : "rte-mention"
       }
       // Read by useMentionAnchors to place this mention's edge handle.
       data-mention-target={noteId}
       onClick={goToMentionedNote}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          goToNote(noteId);
+        }
+      }}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
       {/* Plain notes have no icon of their own, so their mentions show just the title. */}
       <NoteIcon noteId={noteId} className="rte-mention-icon" showPlain={false} />
       {title}
-    </button>
+    </span>
   );
 }

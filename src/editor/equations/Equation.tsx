@@ -46,12 +46,16 @@ export function Equation({ nodeKey, equation, inline }: EquationProps) {
   const [wasEditing, setWasEditing] = useState(isEditing);
   if (isEditing !== wasEditing) {
     setWasEditing(isEditing);
-    if (isEditing) setDraft(equation);
+    if (isEditing) {
+      setDraft(equation);
+    }
   }
 
   useEffect(() => {
     const source = sourceRef.current;
-    if (!isEditing || !source) return;
+    if (!isEditing || !source) {
+      return;
+    }
     const offset = takePendingCaret() === "start" ? 0 : source.value.length;
     source.focus();
     source.setSelectionRange(offset, offset);
@@ -65,9 +69,14 @@ export function Equation({ nodeKey, equation, inline }: EquationProps) {
     editor.update(
       () => {
         const node = $getNodeByKey(nodeKey);
-        if (!$isEquationNode(node) || !$commitEquation(node, draft)) return;
-        if (to === "newLine") $selectNewLineAfter(node);
-        else $selectBeside(node, side);
+        if (!$isEquationNode(node) || !$commitEquation(node, draft)) {
+          return;
+        }
+        if (to === "newLine") {
+          $selectNewLineAfter(node);
+        } else {
+          $selectBeside(node, side);
+        }
       },
       {
         // Lexical has no line-boundary move of its own; continue natively once the caret is out.
@@ -88,9 +97,13 @@ export function Equation({ nodeKey, equation, inline }: EquationProps) {
   const handleBlur = () => {
     editor.update(() => {
       const node = $getNodeByKey(nodeKey);
-      if (!$isEquationNode(node)) return;
+      if (!$isEquationNode(node)) {
+        return;
+      }
       const wasSelected = $isEditing(nodeKey);
-      if ($commitEquation(node, draft) && wasSelected) $setSelection(null);
+      if ($commitEquation(node, draft) && wasSelected) {
+        $setSelection(null);
+      }
     });
   };
 
@@ -115,8 +128,11 @@ export function Equation({ nodeKey, equation, inline }: EquationProps) {
       const side = e.key === "ArrowLeft" ? "before" : "after";
       const atEdge = side === "before" ? selectionStart === 0 : selectionEnd === value.length;
       // ⌘ goes to the start/end of the note's line, not of the source; ⌥ moves by word within it.
-      if (e.metaKey) leave(side, "lineBoundary");
-      else if (atEdge) leave(side);
+      if (e.metaKey) {
+        leave(side, "lineBoundary");
+      } else if (atEdge) {
+        leave(side);
+      }
     } else if (e.altKey || e.metaKey || e.ctrlKey) {
       // Native moves within the source
     } else if (e.key === "ArrowUp" && !value.slice(0, selectionStart).includes("\n")) {
@@ -129,7 +145,9 @@ export function Equation({ nodeKey, equation, inline }: EquationProps) {
   const startEditing = () => {
     editor.update(() => {
       const node = $getNodeByKey(nodeKey);
-      if ($isEquationNode(node)) $editEquation(node, "end");
+      if ($isEquationNode(node)) {
+        $editEquation(node, "end");
+      }
     });
   };
 
@@ -205,7 +223,9 @@ function Katex({ source, displayMode }: { source: string; displayMode: boolean }
     }
   }, [source, displayMode]);
 
-  if (source.trim() === "") return <span className="rte-equation-empty">Empty equation</span>;
+  if (source.trim() === "") {
+    return <span className="rte-equation-empty">Empty equation</span>;
+  }
   if ("error" in result) {
     return (
       <span className="rte-equation-error" title={result.error}>
@@ -222,7 +242,9 @@ function Katex({ source, displayMode }: { source: string; displayMode: boolean }
  */
 function $commitEquation(node: EquationNode, source: string): boolean {
   if (source.trim() !== "") {
-    if (node.getEquation() !== source) node.setEquation(source);
+    if (node.getEquation() !== source) {
+      node.setEquation(source);
+    }
     return true;
   }
   if (node.isInline()) {
@@ -254,16 +276,25 @@ function $selectBeside(node: EquationNode, side: "before" | "after"): void {
   if ($isEquationNode(sibling)) {
     $editEquation(sibling, side === "before" ? "end" : "start");
   } else if (node.isInline()) {
-    if (side === "before") node.selectPrevious();
-    else node.selectNext(0, 0);
+    if (side === "before") {
+      node.selectPrevious();
+    } else {
+      node.selectNext(0, 0);
+    }
   } else if ($isElementNode(sibling)) {
-    if (side === "before") sibling.selectEnd();
-    else sibling.selectStart();
+    if (side === "before") {
+      sibling.selectEnd();
+    } else {
+      sibling.selectStart();
+    }
   } else {
     // A display equation at the start or end of the note: make a line to land on.
     const paragraph = $createParagraphNode();
-    if (side === "before") node.insertBefore(paragraph);
-    else node.insertAfter(paragraph);
+    if (side === "before") {
+      node.insertBefore(paragraph);
+    } else {
+      node.insertAfter(paragraph);
+    }
     paragraph.select();
   }
 }
@@ -289,9 +320,15 @@ const SHIELDED_EVENTS = [
 const markHandled = (event: Event) => Object.assign(event, { _lexicalHandled: true });
 
 function shieldFromLexical(element: HTMLElement | null) {
-  if (!element) return;
-  for (const name of SHIELDED_EVENTS) element.addEventListener(name, markHandled);
+  if (!element) {
+    return;
+  }
+  for (const name of SHIELDED_EVENTS) {
+    element.addEventListener(name, markHandled);
+  }
   return () => {
-    for (const name of SHIELDED_EVENTS) element.removeEventListener(name, markHandled);
+    for (const name of SHIELDED_EVENTS) {
+      element.removeEventListener(name, markHandled);
+    }
   };
 }

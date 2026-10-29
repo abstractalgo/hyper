@@ -31,8 +31,9 @@ const TITLE_BAR_HEIGHT = 34;
 const measuredSourceHandles = (s: ReactFlowState) => {
   const keys: string[] = [];
   for (const [nodeId, node] of s.nodeLookup) {
-    for (const handle of node.internals.handleBounds?.source ?? [])
+    for (const handle of node.internals.handleBounds?.source ?? []) {
       keys.push(`${nodeId}:${handle.id}`);
+    }
   }
   return keys.join("\n");
 };
@@ -102,7 +103,9 @@ export function Canvas() {
   // Double-clicking empty canvas (the pane itself, not a note or control) adds a note there,
   // with its title bar centered under the cursor.
   const handleDoubleClick = (e: MouseEvent) => {
-    if (!(e.target instanceof Element) || !e.target.classList.contains("react-flow__pane")) return;
+    if (!(e.target instanceof Element) || !e.target.classList.contains("react-flow__pane")) {
+      return;
+    }
     const { x, y } = screenToFlowPosition({ x: e.clientX, y: e.clientY });
     addNode({ x: x - NOTE_WIDTH / 2, y: y - TITLE_BAR_HEIGHT / 2 });
   };

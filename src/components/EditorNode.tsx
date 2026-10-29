@@ -76,7 +76,9 @@ export const EditorNodeView = memo(function EditorNodeView({
   // Handles also move when they switch sides, as notes are dragged past each other.
   const measuredSides = useRef(anchorSides);
   useLayoutEffect(() => {
-    if (measuredSides.current === anchorSides) return;
+    if (measuredSides.current === anchorSides) {
+      return;
+    }
     measuredSides.current = anchorSides;
     updateNodeInternals(id);
   }, [id, anchorSides, updateNodeInternals]);

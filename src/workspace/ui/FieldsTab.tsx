@@ -94,7 +94,9 @@ function FieldForm({ initial, isNew, onSaved, onDeleted }: ItemFormProps<FieldDe
   useAutoSave(draft, errors.length === 0, (d) => {
     const field = { ...d, name: d.name.trim() };
     saveField(field);
-    if (isNew) onSaved(field);
+    if (isNew) {
+      onSaved(field);
+    }
   });
 
   return (
@@ -188,7 +190,9 @@ function FieldForm({ initial, isNew, onSaved, onDeleted }: ItemFormProps<FieldDe
             checked={draft.required}
             onChange={(e) => {
               update({ required: e.target.checked });
-              if (!e.target.checked) updateDefault((v) => v.slice(0, 0));
+              if (!e.target.checked) {
+                updateDefault((v) => v.slice(0, 0));
+              }
             }}
           />
         </label>
@@ -305,8 +309,11 @@ function AddOptionInput({
   const nodes = useCanvasStore((s) => s.nodes);
   const rows = searchNotes(nodes, query, { exclude });
   const choose = (row: NoteRow) => {
-    if (row.kind === "note") onPick(row.note.id);
-    else onCreate(row.title);
+    if (row.kind === "note") {
+      onPick(row.note.id);
+    } else {
+      onCreate(row.title);
+    }
     setQuery("");
   };
   const nav = useListNavigation(rows, choose);

@@ -67,7 +67,9 @@ function IconForm({ initial, isNew, onSaved, onDeleted }: ItemFormProps<CustomIc
   useAutoSave(draft, errors.length === 0, (d) => {
     const icon = { ...d, url: d.url.trim() };
     saveCustomIcon(icon);
-    if (isNew) onSaved(icon);
+    if (isNew) {
+      onSaved(icon);
+    }
   });
 
   const handleDelete = () => {

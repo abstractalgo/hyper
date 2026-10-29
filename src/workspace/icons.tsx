@@ -30,7 +30,9 @@ export function IconByName({
     customId ? s.customIcons.find((i) => i.id === customId) : undefined,
   );
   if (customId) {
-    if (!custom) return null;
+    if (!custom) {
+      return null;
+    }
     return (
       <img
         src={custom.url}
@@ -40,7 +42,9 @@ export function IconByName({
       />
     );
   }
-  if (!KNOWN_ICONS.has(name)) return null;
+  if (!KNOWN_ICONS.has(name)) {
+    return null;
+  }
   return (
     <DynamicIcon
       name={name as IconName}
@@ -99,7 +103,11 @@ export function NoteIcon({
 }) {
   const schemaId = useNoteData(noteId, "schemaId") ?? null;
   const icon = useNoteData(noteId, "icon");
-  if (icon) return <IconByName name={icon} className={`shrink-0 ${className}`} />;
-  if (schemaId === null && !showPlain) return null;
+  if (icon) {
+    return <IconByName name={icon} className={`shrink-0 ${className}`} />;
+  }
+  if (schemaId === null && !showPlain) {
+    return null;
+  }
   return <SchemaIcon schemaId={schemaId} className={className} />;
 }

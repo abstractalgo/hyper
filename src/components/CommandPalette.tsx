@@ -73,7 +73,9 @@ export function CommandPalette() {
     (returnToEditor: boolean) => {
       setOpen(false);
       // After the dialog has let go of focus.
-      if (returnToEditor && held) requestAnimationFrame(() => restoreEditorSelection(held));
+      if (returnToEditor && held) {
+        requestAnimationFrame(() => restoreEditorSelection(held));
+      }
     },
     [held],
   );

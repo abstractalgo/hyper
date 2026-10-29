@@ -50,9 +50,13 @@ export function NoteMention({ noteId, nodeKey }: { noteId: string; nodeKey: Node
   // Hovered or selected, the mention highlights the note it points to and the link there.
   const active = hovered || selected;
   useEffect(() => {
-    if (!active || !ref.current) return;
+    if (!active || !ref.current) {
+      return;
+    }
     const location = locateMention(ref.current);
-    if (!location) return;
+    if (!location) {
+      return;
+    }
     setHoveredMention({ ...location, targetId: noteId });
     // Also when the mention is deleted while active (it never gets mouseleave then).
     return () => setHoveredMention(null);

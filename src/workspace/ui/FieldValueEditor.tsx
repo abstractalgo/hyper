@@ -74,7 +74,9 @@ export function FieldValueEditor({
             siblingIds: field.optionIds,
           });
           // The store already added it to the saved field; a settings draft needs it too.
-          if (onFieldChange) onFieldChange({ ...field, optionIds: [...field.optionIds, id] });
+          if (onFieldChange) {
+            onFieldChange({ ...field, optionIds: [...field.optionIds, id] });
+          }
           return id;
         }}
         noteId={noteId}
@@ -200,10 +202,14 @@ function InlineAtomInput({
   const current = atom === undefined ? "" : String(atom);
   const commit = (raw: string) => {
     setDraft(null);
-    if (raw === current) return;
+    if (raw === current) {
+      return;
+    }
     const parsed = parseAtom(field.type, raw);
     // Invalid input reverts; empty input clears (if allowed).
-    if (parsed !== null || raw.trim() === "") onCommit(parsed);
+    if (parsed !== null || raw.trim() === "") {
+      onCommit(parsed);
+    }
   };
   return (
     <div className="flex min-w-0 items-center gap-1">
@@ -218,7 +224,9 @@ function InlineAtomInput({
         onChange={(e) => setDraft(e.target.value)}
         onBlur={(e) => commit(e.target.value)}
         onKeyDown={(e) => {
-          if (e.key === "Enter") e.currentTarget.blur();
+          if (e.key === "Enter") {
+            e.currentTarget.blur();
+          }
           if (e.key === "Escape") {
             setDraft(null);
             e.currentTarget.blur();

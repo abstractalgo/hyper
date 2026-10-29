@@ -27,9 +27,13 @@ const MENTION_REGEX = new RegExp(`(^|\\s|\\()@([^\\n@]{0,${MAX_QUERY_LENGTH}})$`
 
 const mentionTrigger: TriggerFn = (text) => {
   const match = MENTION_REGEX.exec(text);
-  if (!match) return null;
+  if (!match) {
+    return null;
+  }
   const [, lead = "", query = ""] = match;
-  if (/^\s|\s{2}/.test(query)) return null;
+  if (/^\s|\s{2}/.test(query)) {
+    return null;
+  }
   return {
     leadOffset: match.index + lead.length,
     matchingString: query,
@@ -68,7 +72,9 @@ const renderMenu: MenuRenderFn<MentionOption> = (
   { options, selectedIndex, selectOptionAndCleanUp, setHighlightedIndex },
   query,
 ) => {
-  if (!anchorElementRef.current || options.length === 0) return null;
+  if (!anchorElementRef.current || options.length === 0) {
+    return null;
+  }
   // Arrow keys / Enter / Escape are handled by Lexical; the buttons are for pointer users.
   // Portaled to <body> and positioned by MentionMenu rather than Lexical's anchor element.
   return createPortal(
@@ -124,7 +130,9 @@ export function MentionsPlugin({ noteId }: MentionsPluginProps) {
   const createNoteBeside = useCanvasStore((s) => s.createNoteBeside);
 
   const options = useMemo((): MentionOption[] => {
-    if (query === null) return [];
+    if (query === null) {
+      return [];
+    }
     const others = nodes.filter((n) => n.id !== noteId);
     const search = query.trim();
     if (!search) {
@@ -152,7 +160,9 @@ export function MentionsPlugin({ noteId }: MentionsPluginProps) {
         : option.noteId;
     editor.update(() => {
       const mention = $createNoteMentionNode(targetId);
-      if (nodeToReplace) nodeToReplace.replace(mention);
+      if (nodeToReplace) {
+        nodeToReplace.replace(mention);
+      }
       // Caret right after the mention, so punctuation can follow it directly.
       mention.selectNext();
       closeMenu();

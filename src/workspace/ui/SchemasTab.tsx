@@ -69,7 +69,9 @@ function SchemaForm({ initial, isNew, onSaved, onDeleted }: ItemFormProps<Schema
   useAutoSave(draft, nameError === null, (d) => {
     const schema = { ...d, name: d.name.trim() };
     saveSchema(schema);
-    if (isNew) onSaved(schema);
+    if (isNew) {
+      onSaved(schema);
+    }
   });
 
   // Saving is immediate, so confirm before a removal that deletes note values.

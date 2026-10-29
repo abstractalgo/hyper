@@ -13,7 +13,9 @@ const mentionHandleId = (index: number) => `mention-${index}`;
 export function locateMention(el: Element): { sourceId: string; handleId: string } | null {
   const node = el.closest<HTMLElement>(".react-flow__node");
   const sourceId = node?.dataset.id;
-  if (!node || !sourceId) return null;
+  if (!node || !sourceId) {
+    return null;
+  }
   const index = Array.from(node.querySelectorAll(`[${MENTION_TARGET_ATTR}]`)).indexOf(el);
   return index < 0 ? null : { sourceId, handleId: mentionHandleId(index) };
 }
@@ -40,7 +42,9 @@ export function useMentionAnchors(
   useLayoutEffect(() => {
     const root = rootRef.current;
     const content = contentRef.current;
-    if (!root || !content) return;
+    if (!root || !content) {
+      return;
+    }
 
     let frame = 0;
     const measure = () => {
@@ -64,7 +68,9 @@ export function useMentionAnchors(
       setAnchors((prev) => (sameAnchors(prev, next) ? prev : next));
     };
     const schedule = () => {
-      if (!frame) frame = requestAnimationFrame(measure);
+      if (!frame) {
+        frame = requestAnimationFrame(measure);
+      }
     };
 
     const mutations = new MutationObserver(schedule);

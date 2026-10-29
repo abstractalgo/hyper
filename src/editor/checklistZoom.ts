@@ -17,15 +17,21 @@ function unscale(event: MouseEvent) {
   }
   const rect = item.getBoundingClientRect();
   const scale = item.offsetWidth ? rect.width / item.offsetWidth : 1;
-  if (scale === 1) return;
+  if (scale === 1) {
+    return;
+  }
   Object.defineProperty(event, "clientX", {
     value: rect.left + (event.clientX - rect.left) / scale,
   });
 }
 
 export function fixChecklistZoom(container: HTMLElement) {
-  for (const type of EVENTS) container.addEventListener(type, unscale, { capture: true });
+  for (const type of EVENTS) {
+    container.addEventListener(type, unscale, { capture: true });
+  }
   return () => {
-    for (const type of EVENTS) container.removeEventListener(type, unscale, { capture: true });
+    for (const type of EVENTS) {
+      container.removeEventListener(type, unscale, { capture: true });
+    }
   };
 }

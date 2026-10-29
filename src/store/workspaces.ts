@@ -30,7 +30,9 @@ const groupTheoryWorkspace = (): Workspace => ({
  */
 function firstVisit(): Pick<WorkspacesState, "workspaces" | "activeId"> {
   // Hydration replaces this with the saved index.
-  if (localStorage.getItem(INDEX_KEY) !== null) return { workspaces: [], activeId: "" };
+  if (localStorage.getItem(INDEX_KEY) !== null) {
+    return { workspaces: [], activeId: "" };
+  }
   const savedBoard = localStorage.getItem("hyper-board");
   const workspaces: Workspace[] = [
     { id: crypto.randomUUID(), name: "Ledgerly", ...(!savedBoard && { sample: "ledgerly" }) },

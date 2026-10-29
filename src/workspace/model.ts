@@ -233,8 +233,9 @@ export function validateCustomIcon(icon: CustomIcon, all: CustomIcon[]): string[
   } else if (all.some((other) => other.id !== icon.id && other.name === icon.name)) {
     errors.push("Another icon already has this name.");
   }
-  if (!/^https?:\/\//i.test(icon.url.trim()))
+  if (!/^https?:\/\//i.test(icon.url.trim())) {
     errors.push("The URL must start with http:// or https://.");
+  }
   return errors;
 }
 
@@ -245,15 +246,21 @@ export const initialValue = (field: FieldDef): FieldValue =>
 /** Brings an existing value in line with a field's (possibly changed) rules. */
 export function conformValue(field: FieldDef, value: FieldValue | undefined): FieldValue {
   let next = value ?? [];
-  if (!isMultiple(field)) next = next.slice(0, 1);
-  if (field.required && next.length === 0) next = [...field.defaultValue];
+  if (!isMultiple(field)) {
+    next = next.slice(0, 1);
+  }
+  if (field.required && next.length === 0) {
+    next = [...field.defaultValue];
+  }
   return next;
 }
 
 /** Problems with a field definition, as user-facing messages (empty = valid). */
 export function validateField(field: FieldDef): string[] {
   const errors: string[] = [];
-  if (!field.name.trim()) errors.push("Name is required.");
+  if (!field.name.trim()) {
+    errors.push("Name is required.");
+  }
   if (field.required && field.defaultValue.length === 0) {
     errors.push("Mandatory fields need a default value.");
   }
@@ -283,6 +290,8 @@ export function formatDateAtom(type: "date" | "datetime", atom: FieldAtom): stri
   const s = String(atom);
   // Parse date-only values as local midnight, not UTC (which can shift the day).
   const date = new Date(type === "date" ? `${s}T00:00` : s);
-  if (Number.isNaN(date.getTime())) return s;
+  if (Number.isNaN(date.getTime())) {
+    return s;
+  }
   return (type === "date" ? dateFormat : dateTimeFormat).format(date);
 }

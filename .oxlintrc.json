@@ -14,7 +14,8 @@
       {
         "allow": ["**/*.css"]
       }
-    ]
+    ],
+    "curly": ["error", "all"]
   },
   "ignorePatterns": ["dist", ".yarn"],
   "overrides": [

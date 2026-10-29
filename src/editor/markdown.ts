@@ -32,7 +32,9 @@ import {
 const EQUATION: TextMatchTransformer = {
   dependencies: [EquationNode],
   export: (node) => {
-    if (!$isEquationNode(node)) return null;
+    if (!$isEquationNode(node)) {
+      return null;
+    }
     return node.isInline() ? `$${node.getEquation()}$` : `$$${node.getEquation()}$$`;
   },
   regExp: /\$\$ $/,
@@ -42,8 +44,11 @@ const EQUATION: TextMatchTransformer = {
     const onEmptyLine =
       $isParagraphNode(parent) && $isRootNode(parent.getParent()) && parent.getChildrenSize() === 1;
     const equation = $createEquationNode("", !onEmptyLine);
-    if (onEmptyLine) parent.replace(equation);
-    else textNode.replace(equation);
+    if (onEmptyLine) {
+      parent.replace(equation);
+    } else {
+      textNode.replace(equation);
+    }
     $editEquation(equation, "end");
   },
   type: "text-match",

@@ -15,7 +15,9 @@ export function useGoToNote() {
   return useCallback(
     (noteId: string) => {
       const node = getInternalNode(noteId);
-      if (!node) return;
+      if (!node) {
+        return;
+      }
       const { x, y } = node.internals.positionAbsolute;
       const { width = 0, height = 0 } = node.measured;
       void setCenter(x + width / 2, y + height / 2, { zoom: getZoom(), duration: 300 });

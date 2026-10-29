@@ -99,13 +99,17 @@ export function useAutoSave<T>(draft: T, valid: boolean, save: (draft: T) => voi
     latest.current = { valid, save };
   });
   useEffect(() => {
-    if (draft !== initial.current && latest.current.valid) latest.current.save(draft);
+    if (draft !== initial.current && latest.current.valid) {
+      latest.current.save(draft);
+    }
   }, [draft]);
 }
 
 /** Validation messages under a settings form. */
 export function FormErrors({ errors }: { errors: readonly string[] }) {
-  if (errors.length === 0) return null;
+  if (errors.length === 0) {
+    return null;
+  }
   return (
     <ul className="text-xs text-red-600">
       {errors.map((e) => (

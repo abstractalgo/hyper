@@ -64,12 +64,18 @@ export function WorkspaceTab() {
   const active = workspaces.find((w) => w.id === activeId);
   // Saved as it's typed, unless it's blank.
   const [name, setName] = useState(active?.name ?? "");
-  if (!active) return null;
+  if (!active) {
+    return null;
+  }
 
   const handleDelete = async () => {
     const next = workspaces.find((w) => w.id !== active.id);
-    if (!next) return;
-    if (!window.confirm(`Delete the workspace “${active.name}” and all its notes?`)) return;
+    if (!next) {
+      return;
+    }
+    if (!window.confirm(`Delete the workspace “${active.name}” and all its notes?`)) {
+      return;
+    }
     setSettingsOpen(false);
     await openWorkspace(next.id);
     deleteWorkspace(active.id);
@@ -83,7 +89,9 @@ export function WorkspaceTab() {
           value={name}
           onChange={(e) => {
             setName(e.target.value);
-            if (e.target.value.trim()) rename(active.id, e.target.value.trim());
+            if (e.target.value.trim()) {
+              rename(active.id, e.target.value.trim());
+            }
           }}
           placeholder="e.g. Side project"
           // Focused when settings open on this tab (as they do for a new workspace).

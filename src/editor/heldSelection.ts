@@ -35,13 +35,19 @@ export type HeldSelection = {
 /** The selection of the note editor that has focus, or null if focus isn't in one. */
 export function holdEditorSelection(): HeldSelection | null {
   const root = document.activeElement;
-  if (!(root instanceof HTMLElement) || !root.isContentEditable) return null;
+  if (!(root instanceof HTMLElement) || !root.isContentEditable) {
+    return null;
+  }
   const editor = getNearestEditorFromDOMNode(root);
   const noteId = root.closest(".react-flow__node")?.getAttribute("data-id");
-  if (!editor || !noteId) return null;
+  if (!editor || !noteId) {
+    return null;
+  }
   return editor.getEditorState().read(() => {
     const selection = $getSelection();
-    if (!selection) return null;
+    if (!selection) {
+      return null;
+    }
     const text = selection.getTextContent().replace(/\s+/g, " ").trim();
     return { editor, selection: selection.clone(), noteId, text };
   });
@@ -76,7 +82,9 @@ export const restoreEditorSelection = (held: HeldSelection) => resume(held);
 export function replaceWithMention(held: HeldSelection, noteId: string) {
   resume(held, () => {
     const selection = $getSelection();
-    if (!$isRangeSelection(selection)) return;
+    if (!$isRangeSelection(selection)) {
+      return;
+    }
     const mention = $createNoteMentionNode(noteId);
     selection.insertNodes([mention]);
     mention.selectNext();

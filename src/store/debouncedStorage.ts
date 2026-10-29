@@ -12,13 +12,17 @@ export function debouncedLocalStorage(delayMs = 500): StateStorage {
   const flush = () => {
     clearTimeout(timer);
     timer = undefined;
-    for (const [key, value] of pending) localStorage.setItem(key, value);
+    for (const [key, value] of pending) {
+      localStorage.setItem(key, value);
+    }
     pending.clear();
   };
   if (typeof window !== "undefined") {
     window.addEventListener("pagehide", flush);
     document.addEventListener("visibilitychange", () => {
-      if (document.visibilityState === "hidden") flush();
+      if (document.visibilityState === "hidden") {
+        flush();
+      }
     });
   }
 

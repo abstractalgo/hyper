@@ -9,7 +9,9 @@ const VIEWPORT_MARGIN = 8;
  */
 function getQueryRect(queryLength: number): { left: number; top: number; bottom: number } | null {
   const selection = window.getSelection();
-  if (!selection || selection.rangeCount === 0) return null;
+  if (!selection || selection.rangeCount === 0) {
+    return null;
+  }
   const caret = selection.getRangeAt(0);
   const range = caret.cloneRange();
   const start = caret.startOffset - (queryLength + 1);
@@ -18,7 +20,9 @@ function getQueryRect(queryLength: number): { left: number; top: number; bottom:
   }
   const bounds = range.getBoundingClientRect();
   const first = range.getClientRects()[0] ?? bounds;
-  if (bounds.width === 0 && bounds.height === 0) return null;
+  if (bounds.width === 0 && bounds.height === 0) {
+    return null;
+  }
   return { left: first.left, top: bounds.top, bottom: bounds.bottom };
 }
 
@@ -44,7 +48,9 @@ export function MentionMenu({ query, children }: MentionMenuProps) {
     const place = () => {
       const rect = getQueryRect(query.length);
       const menu = menuRef.current;
-      if (!rect || !menu) return;
+      if (!rect || !menu) {
+        return;
+      }
       const { offsetWidth: width, offsetHeight: height } = menu;
       const fitsBelow = rect.bottom + GAP + height <= window.innerHeight - VIEWPORT_MARGIN;
       const top = fitsBelow

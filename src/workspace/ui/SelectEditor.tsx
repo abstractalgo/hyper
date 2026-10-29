@@ -109,7 +109,9 @@ export function SelectEditor({
       onChange([id]);
       setOpen(false);
     } else if (value.includes(id)) {
-      if (canRemove) remove(id);
+      if (canRemove) {
+        remove(id);
+      }
     } else {
       onChange([...value, id]);
     }
@@ -237,12 +239,17 @@ function OptionEditor({
   const note = useCanvasStore((s) => s.nodes.find((n) => n.id === noteId));
   const updateNodeData = useCanvasStore((s) => s.updateNodeData);
   const [title, setTitle] = useState(note?.data.title ?? "");
-  if (!note) return null;
+  if (!note) {
+    return null;
+  }
 
   const commitTitle = () => {
     const trimmed = title.trim();
-    if (trimmed && trimmed !== note.data.title) updateNodeData(noteId, { title: trimmed });
-    else setTitle(note.data.title);
+    if (trimmed && trimmed !== note.data.title) {
+      updateNodeData(noteId, { title: trimmed });
+    } else {
+      setTitle(note.data.title);
+    }
   };
   const setColor = (color: NoteColor | null) => updateNodeData(noteId, { color });
 
@@ -262,7 +269,9 @@ function OptionEditor({
         onChange={(e) => setTitle(e.target.value)}
         onBlur={commitTitle}
         onKeyDown={(e) => {
-          if (e.key === "Enter") e.currentTarget.blur();
+          if (e.key === "Enter") {
+            e.currentTarget.blur();
+          }
         }}
         className="mb-1 h-7 w-full rounded border border-gray-300 px-2 text-xs outline-none focus:border-blue-500"
       />

@@ -155,7 +155,9 @@ function fieldsFor(
   const out: Record<string, FieldValue> = {};
   for (const id of schema?.fieldIds ?? []) {
     const field = fields.find((f) => f.id === id);
-    if (field) out[id] = id in current ? conformValue(field, current[id]) : initialValue(field);
+    if (field) {
+      out[id] = id in current ? conformValue(field, current[id]) : initialValue(field);
+    }
   }
   return out;
 }
@@ -196,9 +198,13 @@ function pruneHighlight(
   nodes: EditorNode[],
   mentionAnchors: CanvasState["mentionAnchors"],
 ): Highlight | null {
-  if (!h) return h;
+  if (!h) {
+    return h;
+  }
   const exists = (id: string) => nodes.some((n) => n.id === id);
-  if (h.kind === "incoming") return exists(h.noteId) ? h : null;
+  if (h.kind === "incoming") {
+    return exists(h.noteId) ? h : null;
+  }
   const { sourceId, handleId, targetId } = h.link;
   const stillMentioned = mentionAnchors[sourceId]?.some(
     (a) => a.handleId === handleId && a.targetId === targetId,
@@ -346,10 +352,13 @@ export const useCanvasStore = create<CanvasState>()(
       onNodesChange: (changes) =>
         set((s) => {
           const removed = changes.flatMap((c) => (c.type === "remove" ? [c.id] : []));
-          if (removed.length === 0)
+          if (removed.length === 0) {
             return { nodes: withoutHeight(applyNodeChanges(changes, s.nodes)) };
+          }
           const mentionAnchors = { ...s.mentionAnchors };
-          for (const id of removed) delete mentionAnchors[id];
+          for (const id of removed) {
+            delete mentionAnchors[id];
+          }
           const gone = new Set<FieldAtom>(removed);
           // Deleted notes disappear from select fields: their options, defaults and values.
           const fields = s.fields.map((f) =>
@@ -366,7 +375,9 @@ export const useCanvasStore = create<CanvasState>()(
             const touched = Object.keys(n.data.fields).filter(
               (id) => selectIds.has(id) && n.data.fields[id]!.some((v) => gone.has(v)),
             );
-            if (touched.length === 0) return n;
+            if (touched.length === 0) {
+              return n;
+            }
             const values = { ...n.data.fields };
             for (const id of touched) {
               const field = fields.find((f) => f.id === id)!;
@@ -490,7 +501,9 @@ export const useCanvasStore = create<CanvasState>()(
       setNoteField: (noteId, fieldId, value) =>
         set((s) => {
           const field = s.fields.find((f) => f.id === fieldId);
-          if (!field) return {};
+          if (!field) {
+            return {};
+          }
           return {
             nodes: s.nodes.map((n) =>
               n.id === noteId
@@ -537,7 +550,9 @@ export const useCanvasStore = create<CanvasState>()(
               : sc,
           ),
           nodes: s.nodes.map((n) => {
-            if (!(fieldId in n.data.fields)) return n;
+            if (!(fieldId in n.data.fields)) {
+              return n;
+            }
             const { [fieldId]: _removed, ...fields } = n.data.fields;
             return { ...n, data: { ...n.data, fields } };
           }),
@@ -589,7 +604,9 @@ export const useCanvasStore = create<CanvasState>()(
               const usesIt = Object.entries(n.data.fields).some(
                 ([id, v]) => iconFieldIds.has(id) && v.includes(ref),
               );
-              if (n.data.icon !== ref && !usesIt) return n;
+              if (n.data.icon !== ref && !usesIt) {
+                return n;
+              }
               const fields = Object.fromEntries(
                 Object.entries(n.data.fields).map(([id, v]) => [
                   id,
@@ -641,7 +658,9 @@ const SAMPLE_BOARDS: Record<SampleId, () => Promise<Board>> = {
  */
 export async function openWorkspace(workspaceId: string) {
   const workspace = useWorkspaces.getState().workspaces.find((w) => w.id === workspaceId);
-  if (!workspace) return;
+  if (!workspace) {
+    return;
+  }
   const name = boardKey(workspaceId);
   const saved = (await boardStorage!.getItem(name))?.state;
   const board = saved?.initialized
@@ -652,13 +671,17 @@ export async function openWorkspace(workspaceId: string) {
   // From here on, synchronously: the store is saved to the new key from the first change.
   useCanvasStore.persist.setOptions({ name });
   useCanvasStore.setState({ ...BLANK, ...saved });
-  if (board) useCanvasStore.getState().loadBoard(board);
+  if (board) {
+    useCanvasStore.getState().loadBoard(board);
+  }
   useWorkspaces.getState().setActive(workspaceId);
 }
 
 /** Deletes a workspace and its saved board (not the active one). */
 export function deleteWorkspace(workspaceId: string) {
-  if (workspaceId === useWorkspaces.getState().activeId) return;
+  if (workspaceId === useWorkspaces.getState().activeId) {
+    return;
+  }
   boardStorage!.removeItem(boardKey(workspaceId));
   useWorkspaces.getState().remove(workspaceId);
 }

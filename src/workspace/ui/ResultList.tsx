@@ -16,7 +16,9 @@ export function useListNavigation<T>(items: readonly T[], onChoose: (item: T) =>
     } else if (e.key === "Enter") {
       e.preventDefault();
       const item = items[current];
-      if (item !== undefined) onChoose(item);
+      if (item !== undefined) {
+        onChoose(item);
+      }
     }
   };
   return { active: current, setActive, onKeyDown, reset: () => setActive(0) };

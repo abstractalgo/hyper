@@ -28,8 +28,11 @@ function groupItems<V extends string>(items: DropdownItem<V>[]) {
   const groups: { name: string | undefined; items: DropdownItem<V>[] }[] = [];
   for (const item of items) {
     const group = groups.find((g) => g.name === item.group);
-    if (group) group.items.push(item);
-    else groups.push({ name: item.group, items: [item] });
+    if (group) {
+      group.items.push(item);
+    } else {
+      groups.push({ name: item.group, items: [item] });
+    }
   }
   return groups;
 }
@@ -51,7 +54,9 @@ export function Dropdown<V extends string>({
     <Select.Root
       value={value}
       onValueChange={(next) => {
-        if (next !== null) onChange(next);
+        if (next !== null) {
+          onChange(next);
+        }
       }}
       disabled={disabled}
     >

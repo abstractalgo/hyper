@@ -26,7 +26,9 @@ export function searchNotes(
 ): NoteRow[] {
   const trimmed = query.trim();
   const optionNotes = options.flatMap((id) => nodes.filter((n) => n.id === id));
-  if (!trimmed) return optionNotes.map((note) => ({ kind: "note", note }));
+  if (!trimmed) {
+    return optionNotes.map((note) => ({ kind: "note", note }));
+  }
 
   const search = (notes: EditorNode[], max: number) =>
     fuzzySearch(trimmed, notes, { key: (n) => n.data.title, threshold: 0, limit: max }).map(

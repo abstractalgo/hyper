@@ -141,7 +141,9 @@ export function buildBoard<N extends string, F extends string, S extends string>
   const optionNotes = new Map<F, Map<string, EditorNode>>();
   for (const key of fieldKeys) {
     const options = sample.fields[key].options;
-    if (!options?.length || typeof options[0] !== "object") continue;
+    if (!options?.length || typeof options[0] !== "object") {
+      continue;
+    }
     const column = optionNotes.size;
     const notes = (options as [string, NoteColor][]).map(([title, color], row) =>
       createNote({
@@ -199,20 +201,38 @@ export function buildBoard<N extends string, F extends string, S extends string>
 
   const $inline = (parts: Inline<N>[]): LexicalNode[] =>
     parts.map((part) => {
-      if (typeof part === "string") return $createTextNode(part);
-      if ("mention" in part) return $createNoteMentionNode(ids[part.mention]);
-      if ("link" in part) return $createLinkNode(part.url).append($createTextNode(part.link));
-      if ("math" in part) return $createEquationNode(part.math, true);
+      if (typeof part === "string") {
+        return $createTextNode(part);
+      }
+      if ("mention" in part) {
+        return $createNoteMentionNode(ids[part.mention]);
+      }
+      if ("link" in part) {
+        return $createLinkNode(part.url).append($createTextNode(part.link));
+      }
+      if ("math" in part) {
+        return $createEquationNode(part.math, true);
+      }
       const node = $createTextNode(part.text);
-      for (const f of part.format) node.toggleFormat(f);
+      for (const f of part.format) {
+        node.toggleFormat(f);
+      }
       return node;
     });
 
   const $block = (block: Block<N>): LexicalNode => {
-    if ("math" in block) return $createEquationNode(block.math, false);
-    if ("p" in block) return $createParagraphNode().append(...$inline(block.p));
-    if ("h" in block) return $createHeadingNode(block.h).append($createTextNode(block.text));
-    if ("quote" in block) return $createQuoteNode().append(...$inline(block.quote));
+    if ("math" in block) {
+      return $createEquationNode(block.math, false);
+    }
+    if ("p" in block) {
+      return $createParagraphNode().append(...$inline(block.p));
+    }
+    if ("h" in block) {
+      return $createHeadingNode(block.h).append($createTextNode(block.text));
+    }
+    if ("quote" in block) {
+      return $createQuoteNode().append(...$inline(block.quote));
+    }
     if ("checks" in block) {
       return $createListNode("check").append(
         ...block.checks.map(([checked, parts]) =>
@@ -254,7 +274,9 @@ export function buildBoard<N extends string, F extends string, S extends string>
     const values: Record<string, FieldValue> = {};
     for (const fieldKey of fieldKeys) {
       const fieldId = fieldIds[fieldKey];
-      if (!schema.fieldIds.includes(fieldId)) continue;
+      if (!schema.fieldIds.includes(fieldId)) {
+        continue;
+      }
       const given = note.fields?.[fieldKey];
       values[fieldId] = given
         ? given.map((atom) => resolve(fieldKey, atom))

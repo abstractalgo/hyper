@@ -55,12 +55,16 @@ export function NoteProperties({ noteId, selected }: { noteId: string; selected:
   const [wasSelected, setWasSelected] = useState(selected);
   if (selected !== wasSelected) {
     setWasSelected(selected);
-    if (!selected) setRevealed([]);
+    if (!selected) {
+      setRevealed([]);
+    }
   }
   const isShown = (field: FieldDef) =>
     !inline || (values?.[field.id]?.length ?? 0) > 0 || revealed.includes(field.id);
 
-  if (fields.length === 0) return null;
+  if (fields.length === 0) {
+    return null;
+  }
   const emptyFields = fields.filter((f) => !isShown(f));
 
   return (

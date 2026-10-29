@@ -12,18 +12,26 @@ export function NoteTitle({ title, onRename }: NoteTitleProps) {
 
   // Select the title once when editing starts, not on every keystroke.
   useLayoutEffect(() => {
-    if (isEditing) inputRef.current?.select();
+    if (isEditing) {
+      inputRef.current?.select();
+    }
   }, [isEditing]);
 
   const commit = () => {
     const next = draft?.trim();
-    if (next && next !== title) onRename(next);
+    if (next && next !== title) {
+      onRename(next);
+    }
     setDraft(null);
   };
 
   const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter") commit();
-    if (e.key === "Escape") setDraft(null);
+    if (e.key === "Enter") {
+      commit();
+    }
+    if (e.key === "Escape") {
+      setDraft(null);
+    }
   };
 
   if (draft === null) {

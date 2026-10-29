@@ -107,7 +107,9 @@ export class EquationNode extends DecoratorNode<JSX.Element> {
 
 function convertEquationElement(domNode: HTMLElement): DOMConversion | null {
   const equation = domNode.getAttribute("data-equation");
-  if (equation === null) return null;
+  if (equation === null) {
+    return null;
+  }
   const inline = domNode.tagName === "SPAN";
   return { conversion: () => ({ node: $createEquationNode(equation, inline) }), priority: 1 };
 }

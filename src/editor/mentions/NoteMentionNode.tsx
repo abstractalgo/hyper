@@ -38,7 +38,9 @@ export class NoteMentionNode extends DecoratorNode<JSX.Element> {
     return {
       span: (domNode: HTMLElement) => {
         const noteId = domNode.getAttribute("data-note-mention");
-        if (noteId === null) return null;
+        if (noteId === null) {
+          return null;
+        }
         return { conversion: () => ({ node: $createNoteMentionNode(noteId) }), priority: 1 };
       },
     };

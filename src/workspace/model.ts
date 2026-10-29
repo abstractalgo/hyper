@@ -32,7 +32,9 @@ type FieldTypeSpec<T extends FieldType> = {
   /** Lucide icon of the type; also the icon of fields that don't set their own. */
   icon: IconRef;
   /** The native input used to type a value, or null when values are picked (icons, notes). */
-  input: "text" | "number" | "url" | "date" | "datetime-local" | null;
+  input: "text" | "url" | "date" | "datetime-local" | null;
+  /** Characters typing can't enter, dropped as they're typed (or pasted). */
+  disallowed?: RegExp;
   /** Parses typed input into a value, or null if it isn't valid. */
   parse: (input: string) => FieldAtomByType[T] | null;
   /** Whether a stored value is of this type (values are saved untyped, per note). */
@@ -52,7 +54,9 @@ export const FIELD_TYPE_SPECS: { [T in FieldType]: FieldTypeSpec<T> } = {
   number: {
     label: "Number",
     icon: "hash",
-    input: "number",
+    // Plain text rather than a number input: no spinner, and it sizes to its content like the rest.
+    input: "text",
+    disallowed: /[^\d.-]/g,
     parse: (s) => (Number.isFinite(Number(s)) ? Number(s) : null),
     is: (atom): atom is number => typeof atom === "number",
   },

@@ -17,7 +17,7 @@ import { FieldIcon } from "../workspace/icons";
 const GRID = "grid grid-cols-[minmax(4rem,auto)_1fr] content-start items-center gap-x-2 gap-y-0.5";
 
 const INLINE_VALUE_CLASS =
-  "min-w-0 [&>*]:w-auto [&_input]:min-w-7 [&_.truncate]:overflow-visible [&_.truncate]:whitespace-normal";
+  "min-w-0 [&>*]:w-auto [&_input]:ml-0! [&_input]:min-w-7 [&_.truncate]:overflow-visible [&_.truncate]:whitespace-normal";
 
 /** How the fields are laid out, per workspace setting. */
 const LAYOUT_CLASSES: Record<PropertiesPosition, string> = {
@@ -90,8 +90,8 @@ export function NoteProperties({ noteId, selected }: { noteId: string; selected:
               <span className={labels === "icon" ? "sr-only" : "truncate"}>{field.name}</span>
             </dt>
             {/* Inline, every value shows in full: editors take their content's width (not the
-                row's), and text wraps rather than ending in "…". Editors pull themselves 5px
-                left to line up with names in rows; that takes 5px off their width, so pad it back. */}
+                row's), and text wraps rather than ending in "…". Inputs don't pull themselves 5px left
+                (to line up across rows): there are no rows, and it'd clip their text. */}
             <dd className={inline ? INLINE_VALUE_CLASS : "min-w-0"}>
               <FieldValueEditor
                 field={field}

@@ -200,6 +200,7 @@ function InlineAtomInput({
 }) {
   const [draft, setDraft] = useState<string | null>(null);
   const current = atom === undefined ? "" : String(atom);
+  const { disallowed } = FIELD_TYPE_SPECS[field.type];
   const commit = (raw: string) => {
     setDraft(null);
     if (raw === current) {
@@ -218,10 +219,13 @@ function InlineAtomInput({
       )}
       <input
         type={nativeInputType(field.type)}
+        inputMode={field.type === "number" ? "decimal" : undefined}
         aria-label={field.name}
         placeholder={field.type === "image" ? "https://…" : "Empty"}
         value={draft ?? current}
-        onChange={(e) => setDraft(e.target.value)}
+        onChange={(e) =>
+          setDraft(disallowed ? e.target.value.replace(disallowed, "") : e.target.value)
+        }
         onBlur={(e) => commit(e.target.value)}
         onKeyDown={(e) => {
           if (e.key === "Enter") {

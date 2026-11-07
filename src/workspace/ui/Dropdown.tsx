@@ -62,7 +62,7 @@ export function Dropdown<V extends string>({
     >
       <Select.Trigger
         aria-label={label}
-        className={`flex h-8 w-full min-w-0 items-center justify-between gap-2 rounded border border-gray-300 bg-white px-2 text-left text-sm outline-none hover:bg-gray-50 focus-visible:border-blue-500 data-disabled:cursor-not-allowed data-disabled:bg-gray-50 data-disabled:text-gray-500 ${className}`}
+        className={`flex h-7 w-full min-w-0 items-center justify-between gap-2 rounded border border-gray-300 bg-white px-2 text-left text-sm outline-none hover:bg-gray-50 focus-visible:border-blue-500 data-disabled:cursor-not-allowed data-disabled:bg-gray-50 data-disabled:text-gray-500 ${className}`}
       >
         <Select.Value placeholder={<span className="text-gray-500">{placeholder}</span>}>
           {(selected: V | null) => {
@@ -105,7 +105,7 @@ export function Dropdown<V extends string>({
                       <Select.Item
                         key={item.value}
                         value={item.value}
-                        className="grid cursor-pointer grid-cols-[1rem_1fr] items-center gap-2 py-1.5 pr-3 pl-2 text-sm outline-none select-none data-highlighted:bg-gray-100"
+                        className="grid cursor-pointer grid-cols-[1rem_1fr] items-center gap-2 py-1 pr-3 pl-2 text-sm outline-none select-none data-highlighted:bg-gray-100"
                       >
                         <Select.ItemIndicator className="col-start-1">
                           <CheckIcon className="size-3.5" />

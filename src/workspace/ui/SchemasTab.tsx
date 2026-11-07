@@ -98,7 +98,7 @@ function SchemaForm({ initial, isNew, onSaved, onDeleted }: ItemFormProps<Schema
   };
 
   return (
-    <form className="flex flex-col gap-3" onSubmit={(e) => e.preventDefault()}>
+    <form className="flex flex-col gap-2.5" onSubmit={(e) => e.preventDefault()}>
       <FormRow label="Name">
         <input
           aria-label="Schema name"

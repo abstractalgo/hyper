@@ -43,8 +43,8 @@ export function SettingsDialog() {
       <Dialog.Portal>
         <Dialog.Backdrop className="fixed inset-0 z-50 bg-black/30" />
         <Dialog.Popup className="fixed top-1/2 left-1/2 z-50 flex h-[min(600px,calc(100vh-2rem))] w-[min(820px,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 flex-col rounded-lg bg-white shadow-xl outline-none">
-          <div className="flex items-center justify-between border-b border-gray-200 px-4 py-3">
-            <Dialog.Title className="text-base font-semibold text-gray-900">
+          <div className="flex items-center justify-between border-b border-gray-200 py-2 pr-2 pl-4">
+            <Dialog.Title className="text-sm font-semibold text-gray-900">
               Workspace settings
               <span className="font-normal text-gray-500"> · {name}</span>
             </Dialog.Title>

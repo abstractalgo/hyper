@@ -7,7 +7,7 @@ import { SchemasTab } from "./SchemasTab";
 import { WorkspaceTab } from "./WorkspaceTab";
 
 const tabClass =
-  "h-9 border-b-2 border-transparent px-3 text-sm text-gray-600 hover:text-gray-900 data-active:border-gray-900 data-active:text-gray-900";
+  "-mb-px h-8 border-b-2 border-transparent px-2 text-sm text-gray-600 hover:text-gray-900 data-active:border-gray-900 data-active:text-gray-900";
 
 /** Contents of the settings dialog; loaded on first open (see SettingsDialog). */
 export default function SettingsPanel() {
@@ -20,7 +20,7 @@ export default function SettingsPanel() {
       onValueChange={(value: SettingsTab) => setTab(value)}
       className="flex min-h-0 flex-1 flex-col"
     >
-      <Tabs.List className="flex gap-1 border-b border-gray-200 px-2">
+      <Tabs.List className="flex gap-2 border-b border-gray-200 px-2">
         <Tabs.Tab value="fields" className={tabClass}>
           Fields
         </Tabs.Tab>

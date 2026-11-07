@@ -83,7 +83,7 @@ function IconForm({ initial, isNew, onSaved, onDeleted }: ItemFormProps<CustomIc
   };
 
   return (
-    <form className="flex flex-col gap-3" onSubmit={(e) => e.preventDefault()}>
+    <form className="flex flex-col gap-2.5" onSubmit={(e) => e.preventDefault()}>
       <FormRow label="Name" hint="A slug, used to find the icon in pickers.">
         <input
           aria-label="Icon name"

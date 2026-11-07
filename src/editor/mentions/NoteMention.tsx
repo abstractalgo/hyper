@@ -1,7 +1,7 @@
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
 import { StickyNoteOffIcon } from "lucide-react";
-import { $getSelection, $isNodeSelection, type LexicalEditor, type NodeKey } from "lexical";
-import { useEffect, useRef, useState, useSyncExternalStore, type MouseEvent } from "react";
+import type { NodeKey } from "lexical";
+import { useEffect, useRef, useState, type MouseEvent } from "react";
 
 import { useCanvasView } from "../../components/canvasView";
 import { useGoToNote } from "../../components/useGoToNote";
@@ -9,33 +9,7 @@ import { locateMention } from "../../components/useMentionAnchors";
 import { NoteIcon } from "../../workspace/icons";
 import { NOTE_COLOR_CLASSES } from "../../workspace/model";
 import { useCanvasStore, useNoteData } from "../../store/canvas";
-
-/**
- * Whether the mention itself is selected (the caret "on" it, e.g. after arrowing onto it), not a
- * text selection that merely spans it. Only while the editor has focus: Lexical keeps a node
- * selection after focus leaves.
- */
-function useIsNodeSelected(editor: LexicalEditor, nodeKey: NodeKey): boolean {
-  return useSyncExternalStore(
-    (onChange) => {
-      const root = editor.getRootElement();
-      root?.addEventListener("focus", onChange);
-      root?.addEventListener("blur", onChange);
-      const unregister = editor.registerUpdateListener(onChange);
-      return () => {
-        root?.removeEventListener("focus", onChange);
-        root?.removeEventListener("blur", onChange);
-        unregister();
-      };
-    },
-    () =>
-      editor.getRootElement() === document.activeElement &&
-      editor.getEditorState().read(() => {
-        const selection = $getSelection();
-        return $isNodeSelection(selection) && selection.has(nodeKey);
-      }),
-  );
-}
+import { useIsNodeSelected } from "../useIsNodeSelected";
 
 export function NoteMention({ noteId, nodeKey }: { noteId: string; nodeKey: NodeKey }) {
   const [editor] = useLexicalComposerContext();

@@ -37,8 +37,11 @@ export function CanvasView({ nodeKey, config }: { nodeKey: NodeKey; config: Canv
 
   return (
     <ViewFrame
+      nodeKey={nodeKey}
       Icon={LayoutDashboardIcon}
       label="Canvas"
+      name={config.name}
+      onRename={(name) => update((c) => ({ ...c, name }))}
       typeId={config.typeId}
       setTypeId={(typeId) => update((c) => ({ ...c, typeId }))}
       count={noteIds.length}

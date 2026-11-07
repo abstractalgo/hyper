@@ -14,6 +14,8 @@ import { KanbanView } from "./KanbanView";
 
 /** What a kanban shows: the notes of a type, as cards, in a column per value of a field. */
 export type KanbanConfig = {
+  /** What the view was named; until then it shows what kind of view it is. */
+  name?: string;
   /**
    * The type whose notes are the cards (a named one, or the kanban's own unnamed filter); null
    * until one is picked.

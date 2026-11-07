@@ -14,6 +14,8 @@ import { TableView } from "./TableView";
 
 /** What a table view shows: the notes of a type, as rows, and which of their fields as columns. */
 export type TableConfig = {
+  /** What the view was named; until then it shows what kind of view it is. */
+  name?: string;
   /**
    * The type whose notes are the rows (a named one, or the table's own unnamed filter); null
    * until one is picked.

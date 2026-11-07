@@ -15,6 +15,8 @@ import { CanvasView } from "./CanvasView";
 
 /** What a canvas view shows: the notes of a type, and where it places them. */
 export type CanvasConfig = {
+  /** What the view was named; until then it shows what kind of view it is. */
+  name?: string;
   /**
    * The type whose notes are shown (a named one, or the canvas's own unnamed filter); null until
    * one is picked.

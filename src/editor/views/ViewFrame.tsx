@@ -8,10 +8,14 @@ import {
   SlidersHorizontalIcon,
   type LucideIcon,
 } from "lucide-react";
-import { useContext, useMemo, useState, type ReactNode } from "react";
+import { useContext, useMemo, useState, type MouseEvent, type ReactNode } from "react";
 import { useShallow } from "zustand/react/shallow";
 
+import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
+import { $createNodeSelection, $setSelection, type NodeKey } from "lexical";
+
 import { AncestorsContext, useFlowClasses } from "../../components/canvasView";
+import { NoteTitle } from "../../components/NoteTitle";
 import { newId, useCanvasStore } from "../../store/canvas";
 import { TypeIcon } from "../../workspace/icons";
 import {
@@ -33,6 +37,7 @@ import {
   useViewportPortal,
 } from "../../workspace/ui/popups";
 import { TypeBuilder } from "../../workspace/ui/TypeBuilder";
+import { useIsNodeSelected } from "../useIsNodeSelected";
 
 /** A field the rows have, as its declaration (label, icon, what its values are). */
 export type RowField = Entry & { decl: NonNullable<Entry["decl"]> };
@@ -98,17 +103,25 @@ export function useRowFields(rowIds: string[]): RowField[] {
  * are notes.
  */
 export function ViewFrame({
+  nodeKey,
   Icon,
   label,
+  name,
+  onRename,
   typeId,
   setTypeId,
   count,
   tools,
   children,
 }: {
+  /** The view's node in its note's text. */
+  nodeKey: NodeKey;
   Icon: LucideIcon;
-  /** The view's name, e.g. "Table". */
+  /** What kind of view it is, e.g. "Table": its name until it's given one. */
   label: string;
+  /** The name it was given, if any. */
+  name: string | undefined;
+  onRename: (name: string) => void;
   typeId: TypeId | null;
   setTypeId: (typeId: TypeId) => void;
   count: number;
@@ -116,6 +129,8 @@ export function ViewFrame({
   children: ReactNode;
 }) {
   const viewportPortal = useViewportPortal();
+  const [editor] = useLexicalComposerContext();
+  const selected = useIsNodeSelected(editor, nodeKey);
   const types = useCanvasStore((s) => s.types);
   const saveType = useCanvasStore((s) => s.saveType);
   const deleteType = useCanvasStore((s) => s.deleteType);
@@ -163,18 +178,41 @@ export function ViewFrame({
     }
   };
 
+  // Clicking the header (not its buttons) selects the view in its note's text, as moving the
+  // caret onto it does: Backspace or Delete then removes it.
+  const select = (e: MouseEvent) => {
+    if (e.target instanceof Element && e.target.closest("button, input")) {
+      return;
+    }
+    editor.getRootElement()?.focus({ preventScroll: true });
+    editor.update(() => {
+      const selection = $createNodeSelection();
+      selection.add(nodeKey);
+      $setSelection(selection);
+    });
+  };
+
   return (
     <PopupContainerContext.Provider value={viewportPortal}>
-      <div contentEditable={false} className={`${noDrag} my-2 rounded-md border border-gray-200`}>
-        <div className="flex flex-wrap items-center gap-1 border-b border-gray-200 bg-gray-50 px-1.5 py-1 whitespace-nowrap">
+      <div
+        contentEditable={false}
+        className={`${noDrag} my-2 rounded-md border transition-colors duration-150 ${selected ? "border-[color-mix(in_oklab,var(--color-gray-200),var(--color-blue-400)_30%)]" : "border-gray-200"}`}
+      >
+        {/* oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- the keyboard gets here by moving the caret onto the view */}
+        <div
+          onClick={select}
+          // Rounded like the frame (inside its border), or its corners would cover the frame's.
+          className="flex flex-wrap items-center gap-1 rounded-t-[calc(var(--radius-md)-1px)] border-b border-gray-200 bg-gray-50 px-1.5 py-1 whitespace-nowrap"
+        >
           <Icon className="size-3.5 shrink-0 text-gray-500" />
-          <span className="text-xs text-gray-600">{label}</span>
-          {typeId && (
-            <span className="text-xs text-gray-500">
-              {count} note{count === 1 ? "" : "s"}
-            </span>
-          )}
-          <div className="ml-auto flex items-center">
+          {/* Renamed like a note's title: double-click. */}
+          <div className="min-w-0 text-xs font-medium text-gray-700">
+            <NoteTitle title={name ?? label} onRename={onRename} inputClassName="text-xs" />
+          </div>
+          {/* The view's actions show while the pointer is over the view (this one: its toolbar's
+              parent, not a view around it), or while they're in use: a menu or the filter open,
+              keyboard focus. */}
+          <div className="ml-auto flex items-center opacity-0 transition-opacity duration-150 has-aria-pressed:opacity-100 has-data-popup-open:opacity-100 has-focus-visible:opacity-100 [:hover>*>&]:opacity-100">
             <SourceMenu
               typeId={typeId}
               own={own !== undefined}

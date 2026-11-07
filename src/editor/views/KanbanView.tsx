@@ -113,8 +113,11 @@ export function KanbanView({ nodeKey, config }: { nodeKey: NodeKey; config: Kanb
 
   return (
     <ViewFrame
+      nodeKey={nodeKey}
       Icon={SquareKanbanIcon}
       label="Kanban"
+      name={config.name}
+      onRename={(name) => update({ name })}
       typeId={config.typeId}
       setTypeId={(typeId) => update({ typeId, groupBy: null })}
       count={rowIds.length}

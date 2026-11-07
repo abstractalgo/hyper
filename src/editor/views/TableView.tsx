@@ -3,6 +3,7 @@ import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext
 import { Columns3Icon, Table2Icon } from "lucide-react";
 import { $getNodeByKey, type NodeKey } from "lexical";
 
+import { NoteTitle } from "../../components/NoteTitle";
 import { useGoToNote } from "../../components/useGoToNote";
 import { useCanvasStore, useNoteData } from "../../store/canvas";
 import { FieldIcon, NoteIcon } from "../../workspace/icons";
@@ -74,8 +75,11 @@ export function TableView({ nodeKey, config }: { nodeKey: NodeKey; config: Table
 
   return (
     <ViewFrame
+      nodeKey={nodeKey}
       Icon={Table2Icon}
       label="Table"
+      name={config.name}
+      onRename={(name) => update({ name })}
       typeId={config.typeId}
       setTypeId={(typeId) => update({ typeId, columns: null })}
       count={rowIds.length}
@@ -112,19 +116,30 @@ function TableRow({ noteId, columns }: { noteId: string; columns: RowField[] }) 
   const title = useNoteData(noteId, "title");
   const values = useNoteData(noteId, "fields") ?? NO_VALUES;
   const setNoteField = useCanvasStore((s) => s.setNoteField);
+  const updateNodeData = useCanvasStore((s) => s.updateNodeData);
   const goToNote = useGoToNote();
   return (
     <tr className="border-b border-gray-100 last:border-b-0 hover:bg-gray-50/60">
+      {/* The icon goes to the note; the title is edited as on the note (double-click). */}
       <td className="max-w-48 px-2 py-0.5">
-        <button
-          type="button"
-          onClick={() => goToNote(noteId)}
-          title="Go to note"
-          className="flex max-w-full items-center gap-1.5 rounded py-0.5 text-left font-medium text-gray-800 hover:underline"
-        >
-          <NoteIcon noteId={noteId} className="size-3.5" />
-          <span className="truncate">{title}</span>
-        </button>
+        <div className="flex items-center gap-1.5 py-0.5 font-medium text-gray-800">
+          <button
+            type="button"
+            onClick={() => goToNote(noteId)}
+            aria-label={`Go to ${title}`}
+            title="Go to note"
+            className="shrink-0 rounded hover:bg-gray-200"
+          >
+            <NoteIcon noteId={noteId} className="size-3.5" />
+          </button>
+          <div className="min-w-0 flex-1">
+            <NoteTitle
+              title={title ?? ""}
+              onRename={(next) => updateNodeData(noteId, { title: next })}
+              inputClassName="text-xs font-medium"
+            />
+          </div>
+        </div>
       </td>
       {columns.map((column) => (
         <td key={column.key} className="min-w-24 px-2 py-0.5 align-middle">

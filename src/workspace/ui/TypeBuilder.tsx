@@ -29,6 +29,7 @@ import {
 import { Dropdown, type DropdownItem } from "./Dropdown";
 import { FieldValueEditor } from "./FieldValueEditor";
 import { POPUP_CLASS, POSITIONER_CLASS, usePopupContainer } from "./popups";
+import { SelectEditor } from "./SelectEditor";
 
 type Group = Extract<TypeExpr, { kind: "group" }>;
 
@@ -253,11 +254,51 @@ function TypePicker({
   );
 }
 
-type ConditionKind = "oneOf" | "present" | "empty" | "inType";
+type ConditionKind = "oneOf" | "present" | "empty" | "inType" | "sameAs";
+
+/**
+ * A reference to another object's value: `this` or a note, then maybe one of its fields, then
+ * maybe an item of that field's list (`this["director"]`, `note["owners"][0]`).
+ */
+type Reference = {
+  from: { kind: "this" } | { kind: "object"; id: string };
+  key?: KeyId;
+  item?: number;
+};
+
+const asReference = (type: TypeExpr): Reference | null => {
+  let item: number | undefined;
+  let at = type;
+  if (at.kind === "index" && typeof at.key === "number") {
+    item = at.key;
+    at = at.of;
+  }
+  let key: KeyId | undefined;
+  if (at.kind === "index" && typeof at.key === "string") {
+    key = at.key;
+    at = at.of;
+  }
+  // A note by itself is a listed value ("is any of"), unless something's taken from it.
+  if (at.kind === "this" || (at.kind === "object" && (key !== undefined || item !== undefined))) {
+    return { from: at, key, item };
+  }
+  return null;
+};
+
+const fromReference = ({ from, key, item }: Reference): TypeExpr => {
+  let type: TypeExpr = from;
+  if (key !== undefined) {
+    type = { kind: "index", of: type, key };
+  }
+  return item === undefined ? type : { kind: "index", of: type, key: item };
+};
 
 const kindOf = ({ optional, type }: FieldCondition): ConditionKind | null => {
   if (optional) {
     return type.kind === "never" ? "empty" : null;
+  }
+  if (asReference(type)) {
+    return "sameAs";
   }
   switch (type.kind) {
     case "unknown":
@@ -286,6 +327,8 @@ function conditionLabel(kind: ConditionKind, declared: Entry): string {
       return "is empty";
     case "inType":
       return "is in";
+    case "sameAs":
+      return "is the same as";
     case "oneOf": {
       const values = valueKind(declared.type);
       if (values.kind === "input") {
@@ -313,6 +356,8 @@ function blankCondition(
         : { key, optional: false, type: { kind: "unknown" } };
     case "present":
       return { key, optional: false, type: { kind: "unknown" } };
+    case "sameAs":
+      return { key, optional: false, type: { kind: "this" } };
   }
 }
 
@@ -373,7 +418,7 @@ function FieldConditionEditor({
   const kind = kindOf(condition);
 
   const values = declared ? valueKind(declared.type) : null;
-  const kinds: ConditionKind[] = ["oneOf", "present", "empty"];
+  const kinds: ConditionKind[] = ["oneOf", "sameAs", "present", "empty"];
   if (values?.kind === "note" && eligible.length > 0) {
     kinds.push("inType");
   }
@@ -411,6 +456,14 @@ function FieldConditionEditor({
         />
       </div>
     );
+  } else if (kind === "sameAs") {
+    const reference = asReference(condition.type)!;
+    value = (
+      <ReferenceEditor
+        reference={reference}
+        onChange={(next) => onChange({ ...condition, type: fromReference(next) })}
+      />
+    );
   } else if (kind === "inType" && condition.type.kind === "ref") {
     const ref = condition.type;
     value = (
@@ -444,6 +497,88 @@ function FieldConditionEditor({
         </div>
       )}
       {value}
+    </>
+  );
+}
+
+const THIS = "this";
+const OTHER_NOTE = "note";
+const ITSELF = "itself";
+const ANY_ITEM = "any";
+
+/**
+ * Picks another object's value: this note (the one the type is used from) or a particular note;
+ * then that note itself or one of its fields; then, for a list, any of its items or one of them.
+ */
+function ReferenceEditor({
+  reference,
+  onChange,
+}: {
+  reference: Reference;
+  onChange: (reference: Reference) => void;
+}) {
+  const types = useCanvasStore((s) => s.types);
+  const fieldItems = useFieldItems([]);
+  const { from, key, item } = reference;
+  const field = key === undefined ? undefined : declarations(types).get(key);
+  const isList = field?.type.kind === "array";
+  return (
+    <>
+      <div className="w-32">
+        <Dropdown
+          label="Whose value"
+          value={from.kind === "this" ? THIS : OTHER_NOTE}
+          onChange={(v) =>
+            onChange({
+              ...reference,
+              from: v === THIS ? { kind: "this" } : { kind: "object", id: "" },
+            })
+          }
+          items={[
+            { value: THIS, label: "this note" },
+            { value: OTHER_NOTE, label: "a note…" },
+          ]}
+        />
+      </div>
+      {from.kind === "object" && (
+        <div className={valueBoxClass}>
+          <SelectEditor
+            label="Note"
+            many={false}
+            options={[]}
+            within={null}
+            value={from.id ? [from.id] : []}
+            onChange={([id]) => onChange({ ...reference, from: { kind: "object", id: id ?? "" } })}
+            allowEmpty
+          />
+        </div>
+      )}
+      's
+      <div className="w-40">
+        <Dropdown
+          label="Field"
+          value={key ?? ITSELF}
+          onChange={(v) =>
+            onChange({ ...reference, key: v === ITSELF ? undefined : v, item: undefined })
+          }
+          items={[{ value: ITSELF, label: "itself (the note)" }, ...fieldItems]}
+        />
+      </div>
+      {isList && (
+        <div className="w-28">
+          <Dropdown
+            label="Item"
+            value={item === undefined ? ANY_ITEM : String(item)}
+            onChange={(v) =>
+              onChange({ ...reference, item: v === ANY_ITEM ? undefined : Number(v) })
+            }
+            items={[
+              { value: ANY_ITEM, label: "any item" },
+              ...[0, 1, 2, 3, 4].map((i) => ({ value: String(i), label: `item ${i + 1}` })),
+            ]}
+          />
+        </div>
+      )}
     </>
   );
 }

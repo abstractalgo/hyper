@@ -8,10 +8,10 @@ import {
   SlidersHorizontalIcon,
   type LucideIcon,
 } from "lucide-react";
-import { useMemo, useState, type ReactNode } from "react";
+import { useContext, useMemo, useState, type ReactNode } from "react";
 import { useShallow } from "zustand/react/shallow";
 
-import { useFlowClasses } from "../../components/canvasView";
+import { AncestorsContext, useFlowClasses } from "../../components/canvasView";
 import { newId, useCanvasStore } from "../../store/canvas";
 import { TypeIcon } from "../../workspace/icons";
 import {
@@ -46,12 +46,20 @@ const toolButtonClass =
 
 const NO_IDS: string[] = [];
 
+/** The note a view is in: what `this` is in the types it shows. */
+export function useViewSelf(): string | null {
+  return useContext(AncestorsContext).at(-1) ?? null;
+}
+
 /** IDs of the notes of `typeId`. Re-renders only when they change, not on every board change. */
 export function useRowIds(typeId: TypeId | null): string[] {
+  const self = useViewSelf();
   return useCanvasStore(
     useShallow((s) =>
       typeId
-        ? members({ kind: "ref", typeId }, { nodes: s.notes, types: s.types }).map((n) => n.id)
+        ? members({ kind: "ref", typeId }, { nodes: s.notes, types: s.types, self }).map(
+            (n) => n.id,
+          )
         : NO_IDS,
     ),
   );

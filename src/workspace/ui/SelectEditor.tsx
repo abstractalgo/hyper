@@ -104,7 +104,8 @@ export function SelectEditor({
   const nodes = useCanvasStore((s) => (open ? s.notes : NO_NOTES));
   const types = useCanvasStore((s) => (open ? s.types : NO_TYPES));
 
-  const choices = within ? members(within, { nodes, types }) : nodes;
+  // `this` in the field's type is the note being edited.
+  const choices = within ? members(within, { nodes, types, self: noteId }) : nodes;
   const canRemove = allowEmpty || value.length > 1;
   const rows = searchNotes(choices, query, {
     options: within ? choices.map((n) => n.id) : options,

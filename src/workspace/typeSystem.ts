@@ -36,6 +36,17 @@ export type TypeExpr =
   | { kind: "group"; mode: GroupMode; of: TypeExpr[] }
   /** Anything (a required entry of this type: "has a value"). */
   | { kind: "unknown" }
+  /**
+   * The note the type is used from: the note a view (a table, a canvas…) is in, or the note a
+   * field's picker is editing. Like `this`, it's set by where the type is used, not here.
+   */
+  | { kind: "this" }
+  /**
+   * Indexed access, `of[key]`. Of objects (`this`, a note, or an index of those): their values
+   * for field `key`, or item `key` (from 0) of each of their lists. Of a type: the type of its
+   * field `key`, or of its lists' items, as in TypeScript.
+   */
+  | { kind: "index"; of: TypeExpr; key: KeyId | number }
   /** Nothing (an optional entry of this type: "is empty"). */
   | { kind: "never" };
 
@@ -126,13 +137,18 @@ const DATETIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/;
 /** What types are about: anything with field values (today, notes). */
 type Obj = { id: string; data: { fields: Record<KeyId, FieldValue> } };
 
-type Scope<T extends Obj> = { nodes: readonly T[]; types: readonly NamedType[] };
+type Scope<T extends Obj> = {
+  nodes: readonly T[];
+  types: readonly NamedType[];
+  /** What `this` is: the note the type is used from (none: `this` is nothing). */
+  self?: string | null;
+};
 
 /**
  * Tests over `scope`. Named types' members are worked out once per evaluator; a type that
  * (indirectly) refers to itself matches nothing while it's being worked out.
  */
-function evaluator<T extends Obj>({ nodes, types }: Scope<T>) {
+function evaluator<T extends Obj>({ nodes, types, self = null }: Scope<T>) {
   const notes = new Map(nodes.map((n) => [n.id, n]));
   const named = new Map(types.map((t) => [t.id, t]));
   const memberIds = new Map<TypeId, ReadonlySet<string>>();
@@ -168,6 +184,14 @@ function evaluator<T extends Obj>({ nodes, types }: Scope<T>) {
         return combine(type, (t) => isA(t, note));
       case "object":
         return note.id === type.id;
+      case "this":
+        return note.id === self;
+      case "index": {
+        const lists = listsOf(type);
+        return lists
+          ? lists.some((l) => l.includes(note.id))
+          : isA(typeAt(type.of, type.key), note);
+      }
       case "primitive":
         return type.name === "note";
       case "unknown":
@@ -204,6 +228,14 @@ function evaluator<T extends Obj>({ nodes, types }: Scope<T>) {
         return atom === type.value;
       case "object":
         return atom === type.id;
+      case "this":
+        return atom === self;
+      case "index": {
+        const lists = listsOf(type);
+        return lists
+          ? lists.some((l) => l.includes(atom))
+          : atomFits(atom, typeAt(type.of, type.key));
+      }
       case "ref": {
         // Notes are checked against the type's members (worked out once); other values directly.
         const note = typeof atom === "string" ? notes.get(atom) : undefined;
@@ -233,6 +265,53 @@ function evaluator<T extends Obj>({ nodes, types }: Scope<T>) {
       case "never":
         return false;
     }
+  };
+
+  /**
+   * The values an expression of objects stands for, one list per object (so `[0]` takes each
+   * one's first): `this`, notes, literals, unions of those, and their fields' values. Null for a
+   * type (see typeAt).
+   */
+  const listsOf = (type: TypeExpr): FieldAtom[][] | null => {
+    switch (type.kind) {
+      case "this":
+        return self ? [[self]] : [];
+      case "object":
+        return [[type.id]];
+      case "literal":
+        return [[type.value]];
+      case "group": {
+        const parts = type.mode === "any" ? type.of.map(listsOf) : [null];
+        return parts.every((p) => p !== null) ? parts.flat() : null;
+      }
+      case "index": {
+        const from = listsOf(type.of);
+        if (from === null) {
+          return null;
+        }
+        const { key } = type;
+        if (typeof key === "number") {
+          return from.flatMap((list) => (list[key] === undefined ? [] : [[list[key]]]));
+        }
+        return from.flatMap((list) =>
+          list.flatMap((v) => {
+            const note = typeof v === "string" ? notes.get(v) : undefined;
+            return note ? [note.data.fields[key] ?? []] : [];
+          }),
+        );
+      }
+      default:
+        return null;
+    }
+  };
+
+  /** A type's field type (`Task["status"]`), or its lists' item type (`[0]`). */
+  const typeAt = (of: TypeExpr, key: KeyId | number): TypeExpr => {
+    const base = of.kind === "index" && listsOf(of) === null ? typeAt(of.of, of.key) : of;
+    if (typeof key === "number") {
+      return base.kind === "array" ? base.of : base;
+    }
+    return entriesOf(base, types).find((e) => e.key === key)?.type ?? { kind: "never" };
   };
 
   const primitiveFits = (atom: FieldAtom, name: PrimitiveName): boolean => {
@@ -437,6 +516,9 @@ export function dependsOn(type: TypeExpr, typeId: TypeId, types: readonly NamedT
       case "pick":
       case "omit":
         queue.push(next.from);
+        break;
+      case "index":
+        queue.push(next.of);
         break;
       default:
         break;

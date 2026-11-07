@@ -16,6 +16,7 @@ import {
   menuItemClass,
   useRowFields,
   useRowIds,
+  useViewSelf,
   ViewFrame,
   ViewMenu,
   ViewSubmenu,
@@ -42,6 +43,7 @@ const isGroupable = (field: RowField) => {
 export function KanbanView({ nodeKey, config }: { nodeKey: NodeKey; config: KanbanConfig }) {
   const [editor] = useLexicalComposerContext();
   const rowIds = useRowIds(config.typeId);
+  const self = useViewSelf();
   const groupable = useRowFields(rowIds).filter(isGroupable);
   const field = groupable.find((f) => f.key === config.groupBy) ?? groupable[0];
 
@@ -56,7 +58,7 @@ export function KanbanView({ nodeKey, config }: { nodeKey: NodeKey; config: Kanb
         kind.kind !== "note"
           ? []
           : kind.within
-            ? members(kind.within, { nodes: s.notes, types: s.types }).map((n) => n.id)
+            ? members(kind.within, { nodes: s.notes, types: s.types, self }).map((n) => n.id)
             : kind.options;
       const present = s.notes
         .filter((n) => rowIds.includes(n.id))

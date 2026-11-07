@@ -3,6 +3,7 @@ import { StickyNoteOffIcon } from "lucide-react";
 import { $getSelection, $isNodeSelection, type LexicalEditor, type NodeKey } from "lexical";
 import { useEffect, useRef, useState, useSyncExternalStore, type MouseEvent } from "react";
 
+import { useCanvasView } from "../../components/canvasView";
 import { useGoToNote } from "../../components/useGoToNote";
 import { locateMention } from "../../components/useMentionAnchors";
 import { NoteIcon } from "../../workspace/icons";
@@ -42,7 +43,8 @@ export function NoteMention({ noteId, nodeKey }: { noteId: string; nodeKey: Node
   const color = useNoteData(noteId, "color");
   const deletedTitle = useCanvasStore((s) => s.deletedTitles[noteId]);
   const goToNote = useGoToNote();
-  const setHoveredMention = useCanvasStore((s) => s.setHoveredMention);
+  // The canvas this note is in highlights the link (each canvas has its own links).
+  const setHoveredMention = useCanvasView((s) => s.setHoveredMention);
   const ref = useRef<HTMLSpanElement>(null);
   const [hovered, setHovered] = useState(false);
   const selected = useIsNodeSelected(editor, nodeKey);

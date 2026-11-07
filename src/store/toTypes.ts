@@ -1,4 +1,6 @@
-import type { EditorNode } from "./canvas";
+import type { XYPosition } from "@xyflow/react";
+
+import { NOTE_WIDTH, type Layout, type Note } from "./canvas";
 import type { CustomIcon, FieldAtom, FieldValue, IconRef, TypeColor } from "../workspace/model";
 import {
   BUILT_IN_TYPES,
@@ -12,9 +14,15 @@ import {
   type TypeExpr,
 } from "../workspace/typeSystem";
 
-/** A note as saved before types: a React Flow node, with its schema and icon. */
-export type SavedNode = Omit<EditorNode, "data"> & {
-  data: EditorNode["data"] & { schemaId?: string | null; icon?: IconRef | null };
+/**
+ * A note as saved before notes and the main canvas's layout were split: a React Flow node, with
+ * its position and width (and, before types, its schema and icon).
+ */
+export type SavedNode = {
+  id: string;
+  position: XYPosition;
+  width?: number;
+  data: Note["data"] & { schemaId?: string | null; icon?: IconRef | null };
 };
 
 /** A board as saved with fields, schemas and collections (what this converts from). */
@@ -56,6 +64,14 @@ type FilterCondition =
   | { kind: "inCollection"; collectionId: string };
 
 type SavedField = SavedBoard["fields"][number];
+
+/** Notes as objects, and their positions and widths as the main canvas's layout. */
+export const toNotes = (nodes: SavedNode[]): { notes: Note[]; layout: Layout } => ({
+  notes: nodes.map(({ id, data }) => ({ id, data })),
+  layout: Object.fromEntries(
+    nodes.map((n) => [n.id, { ...n.position, width: n.width ?? NOTE_WIDTH }]),
+  ),
+});
 
 /** Whether a saved board still has fields and schemas (types replaced them). */
 export const isSavedBoard = (board: object): board is SavedBoard => "schemas" in board;

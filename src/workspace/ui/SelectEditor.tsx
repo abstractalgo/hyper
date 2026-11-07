@@ -2,7 +2,7 @@ import { Popover } from "@base-ui/react/popover";
 import { ChevronLeftIcon, EllipsisIcon, MinusCircleIcon, XIcon } from "lucide-react";
 import { useRef, useState } from "react";
 
-import { useCanvasStore, useNoteData, type EditorNode } from "../../store/canvas";
+import { useCanvasStore, useNoteData, type Note } from "../../store/canvas";
 import { rowKey, searchNotes, type NoteRow } from "../noteSearch";
 import { NoteIcon } from "../icons";
 import { NOTE_COLOR_CLASSES, NOTE_COLORS, type NoteColor, type NoteId } from "../model";
@@ -11,7 +11,7 @@ import { POPUP_CLASS, POSITIONER_CLASS, usePopupContainer } from "./popups";
 import { ResultList, useListNavigation } from "./ResultList";
 
 /** Stable empty lists for the closed picker's store selectors. */
-const NO_NOTES: EditorNode[] = [];
+const NO_NOTES: Note[] = [];
 const NO_TYPES: NamedType[] = [];
 
 type SelectEditorProps = {
@@ -101,7 +101,7 @@ export function SelectEditor({
   const inputRef = useRef<HTMLInputElement>(null);
   const container = usePopupContainer();
   // Only read while open: subscribing to every note would re-render this on every drag frame.
-  const nodes = useCanvasStore((s) => (open ? s.nodes : NO_NOTES));
+  const nodes = useCanvasStore((s) => (open ? s.notes : NO_NOTES));
   const types = useCanvasStore((s) => (open ? s.types : NO_TYPES));
 
   const choices = within ? members(within, { nodes, types }) : nodes;
@@ -250,7 +250,7 @@ function OptionEditor({
   onBack: () => void;
   onRemoveFromOptions: () => void;
 }) {
-  const note = useCanvasStore((s) => s.nodes.find((n) => n.id === noteId));
+  const note = useCanvasStore((s) => s.notes.find((n) => n.id === noteId));
   const updateNodeData = useCanvasStore((s) => s.updateNodeData);
   const [title, setTitle] = useState(note?.data.title ?? "");
   if (!note) {

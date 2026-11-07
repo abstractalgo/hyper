@@ -13,7 +13,15 @@ import {
 import { $createEquationNode } from "../editor/equations/EquationNode";
 import { $createNoteMentionNode } from "../editor/mentions/NoteMentionNode";
 import { EDITOR_NODES } from "../editor/nodes";
-import { createNote, newId, OPTION_NOTE_WIDTH, type Board, type EditorNode } from "../store/canvas";
+import {
+  createNote,
+  newId,
+  NOTE_WIDTH,
+  OPTION_NOTE_WIDTH,
+  type Board,
+  type Layout,
+  type Note,
+} from "../store/canvas";
 import {
   customIconRef,
   slugify,
@@ -177,9 +185,9 @@ export function sampleCollections<N extends string, F extends string, S extends 
           return { kind: "literal", value };
         }
         const title = isNoteKey(value) ? sample.notes[value].title : String(value);
-        const titled = (n: EditorNode) => n.data.title === title;
+        const titled = (n: Note) => n.data.title === title;
         const note = find(
-          board.nodes,
+          board.notes,
           (n) => titled(n) && (!kind.options.length || kind.options.includes(n.id)),
         );
         return { kind: "object", id: note.id };
@@ -242,21 +250,24 @@ export function buildBoard<N extends string, F extends string, S extends string>
   };
 
   // Option notes (by name) per select field with its own options, one column per field.
-  const optionNotes = new Map<F, Map<string, EditorNode>>();
+  const optionNotes = new Map<F, Map<string, Note>>();
+  // Where notes are on the main canvas.
+  const layout: Layout = {};
   for (const key of fieldKeys) {
     const options = sample.fields[key].options;
     if (!options?.length || typeof options[0] !== "object") {
       continue;
     }
     const column = optionNotes.size;
-    const notes = (options as [string, NoteColor][]).map(([title, color], row) =>
-      createNote({
-        title,
-        color,
+    const notes = (options as [string, NoteColor][]).map(([title, color], row) => {
+      const note = createNote({ title, color });
+      layout[note.id] = {
+        x: sample.optionsX + column * OPTION_STEP_X,
+        y: -200 + row * OPTION_STEP_Y,
         width: OPTION_NOTE_WIDTH,
-        position: { x: sample.optionsX + column * OPTION_STEP_X, y: -200 + row * OPTION_STEP_Y },
-      }),
-    );
+      };
+      return note;
+    });
     optionNotes.set(key, new Map(notes.map((n) => [n.data.title, n])));
   }
   // Sample data names select options (and refers to notes by key); notes store IDs.
@@ -411,17 +422,17 @@ export function buildBoard<N extends string, F extends string, S extends string>
       }
     }
 
+    layout[ids[key]] = { x: note.x, y: note.y, width: NOTE_WIDTH };
     return createNote({
       title: note.title,
       fields: values,
       color: note.color,
-      position: { x: note.x, y: note.y },
       content,
       id: ids[key],
     });
   });
 
   const options = [...optionNotes.values()].flatMap((notes) => [...notes.values()]);
-  const board = { nodes: [...nodes, ...options], types, customIcons };
+  const board = { notes: [...nodes, ...options], layout, types, customIcons };
   return { ...board, types: [...types, ...sampleCollections(sample, board)] };
 }

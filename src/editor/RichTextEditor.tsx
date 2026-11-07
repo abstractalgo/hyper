@@ -11,7 +11,8 @@ import { MarkdownShortcutPlugin } from "@lexical/react/LexicalMarkdownShortcutPl
 import { OnChangePlugin } from "@lexical/react/LexicalOnChangePlugin";
 import { RichTextPlugin } from "@lexical/react/LexicalRichTextPlugin";
 import { TabIndentationPlugin } from "@lexical/react/LexicalTabIndentationPlugin";
-import type { EditorState } from "lexical";
+import { EditorRefPlugin } from "@lexical/react/LexicalEditorRefPlugin";
+import { HISTORIC_TAG, type EditorState, type LexicalEditor } from "lexical";
 import { useEffect, useRef, useState } from "react";
 
 import { fixChecklistZoom } from "./checklistZoom";
@@ -25,15 +26,18 @@ import { AUTO_LINK_MATCHERS, isSafeUrl } from "./url";
 type RichTextEditorProps = {
   /** ID of the note this editor belongs to. */
   noteId: string;
-  /** Serialized editor state to start from. Only read on mount. */
-  initialContent: string | null;
+  /**
+   * The note's serialized editor state. The editor starts from it, and loads it again when it
+   * changes elsewhere (the same note in another view).
+   */
+  content: string | null;
   onChange: (serialized: string) => void;
   placeholder?: string;
 };
 
 export function RichTextEditor({
   noteId,
-  initialContent,
+  content,
   onChange,
   placeholder = "Start typing…",
 }: RichTextEditorProps) {
@@ -42,7 +46,7 @@ export function RichTextEditor({
     namespace: `note-${noteId}`,
     theme: editorTheme,
     nodes: EDITOR_NODES,
-    editorState: initialContent ?? undefined,
+    editorState: content ?? undefined,
     onError: (error) => {
       console.error(error);
     },
@@ -51,8 +55,26 @@ export function RichTextEditor({
   const containerRef = useRef<HTMLDivElement>(null);
   useEffect(() => fixChecklistZoom(containerRef.current!), []);
 
+  // What the store has for this note as far as this editor knows: what it saved, or loaded.
+  const known = useRef(content);
+  // When the note's text changes elsewhere (the same note in another view, e.g. a canvas inside a
+  // note), load it here. Not undoable here: it's not this editor's edit.
+  const editorRef = useRef<LexicalEditor>(null);
+  useEffect(() => {
+    const editor = editorRef.current;
+    if (!editor || content === null || content === known.current) {
+      return;
+    }
+    known.current = content;
+    editor.setEditorState(editor.parseEditorState(content), { tag: HISTORIC_TAG });
+  }, [content]);
   const handleChange = (editorState: EditorState) => {
-    onChange(JSON.stringify(editorState.toJSON()));
+    const serialized = JSON.stringify(editorState.toJSON());
+    // Loading text saved elsewhere changes the editor too; that isn't new.
+    if (serialized !== known.current) {
+      known.current = serialized;
+      onChange(serialized);
+    }
   };
 
   return (
@@ -84,6 +106,7 @@ export function RichTextEditor({
       <EquationsPlugin />
       <MarkdownShortcutPlugin transformers={MARKDOWN_TRANSFORMERS} />
       <OnChangePlugin onChange={handleChange} ignoreSelectionChange />
+      <EditorRefPlugin editorRef={editorRef} />
     </LexicalComposer>
   );
 }

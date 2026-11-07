@@ -1,102 +1,28 @@
-import {
-  Background,
-  BackgroundVariant,
-  Controls,
-  ReactFlow,
-  useReactFlow,
-  useStore,
-  type Edge,
-  type NodeTypes,
-  type ReactFlowState,
-} from "@xyflow/react";
-import { useMemo, useState, type MouseEvent } from "react";
+import { Background, BackgroundVariant, Controls, useReactFlow } from "@xyflow/react";
+import { useState, type MouseEvent } from "react";
 import { useShallow } from "zustand/react/shallow";
 
-import {
-  isLinkHighlighted,
-  linkSide,
-  NOTE_WIDTH,
-  oppositeSide,
-  useCanvasStore,
-} from "../store/canvas";
+import { NOTE_WIDTH, useCanvasStore } from "../store/canvas";
 import { CommandPalette } from "./CommandPalette";
-import { EditorNodeView, TITLE_HANDLE_IDS } from "./EditorNode";
-
-const nodeTypes: NodeTypes = { editor: EditorNodeView };
+import { NoteCanvas } from "./NoteCanvas";
 
 /** Approximate rendered height of a note's title bar, used to center new notes on the cursor. */
 const TITLE_BAR_HEIGHT = 34;
 
-/** `nodeId:handleId` of every source handle React Flow has measured, as one comparable string. */
-const measuredSourceHandles = (s: ReactFlowState) => {
-  const keys: string[] = [];
-  for (const [nodeId, node] of s.nodeLookup) {
-    for (const handle of node.internals.handleBounds?.source ?? []) {
-      keys.push(`${nodeId}:${handle.id}`);
-    }
-  }
-  return keys.join("\n");
-};
-
-/**
- * One edge per `@mention`: from the mention's handle to the mentioned note's title.
- *
- * An edge is only emitted once React Flow has measured its source handle. Handles appear and
- * disappear as mentions are typed or deleted (and when a note remounts), and an edge pointing
- * at a handle React Flow doesn't know about yet (or anymore) fails to render.
- */
-function useMentionEdges(): Edge[] {
-  const mentionAnchors = useCanvasStore((s) => s.mentionAnchors);
-  const nodes = useCanvasStore((s) => s.nodes);
-  const measured = useStore(measuredSourceHandles);
-  const hoveredMention = useCanvasStore((s) => s.hoveredMention);
-  const highlight = useCanvasStore((s) => s.highlight);
-
-  return useMemo(() => {
-    const exists = new Set(nodes.map((n) => n.id));
-    const handles = new Set(measured.split("\n"));
-    return Object.entries(mentionAnchors).flatMap(([source, anchors]) =>
-      exists.has(source)
-        ? anchors
-            .filter(
-              (a) =>
-                a.targetId !== source &&
-                exists.has(a.targetId) &&
-                handles.has(`${source}:${a.handleId}`),
-            )
-            .map((a) => ({
-              id: `${source}:${a.handleId}`,
-              source,
-              sourceHandle: a.handleId,
-              target: a.targetId,
-              // Leaves on the side facing the target, enters on the side facing the source.
-              targetHandle: TITLE_HANDLE_IDS[oppositeSide(linkSide(nodes, source, a.targetId))],
-              ...(isLinkHighlighted(
-                { hoveredMention, highlight },
-                {
-                  sourceId: source,
-                  handleId: a.handleId,
-                  targetId: a.targetId,
-                },
-              ) && { className: "mention-edge-highlighted", zIndex: 1 }),
-            }))
-        : [],
-    );
-  }, [mentionAnchors, nodes, measured, hoveredMention, highlight]);
-}
-
+/** The main canvas: every note in the workspace, where the workspace's layout places it. */
 export function Canvas() {
-  const { nodes, onNodesChange, addNode, setHighlight } = useCanvasStore(
+  const noteIds = useCanvasStore(useShallow((s) => s.notes.map((n) => n.id)));
+  const { layout, placeNotes, deleteNotes, setHeights, addNode, setViewport } = useCanvasStore(
     useShallow((s) => ({
-      nodes: s.nodes,
-      onNodesChange: s.onNodesChange,
+      layout: s.layout,
+      placeNotes: s.placeNotes,
+      deleteNotes: s.deleteNotes,
+      setHeights: s.setHeights,
       addNode: s.addNode,
-      setHighlight: s.setHighlight,
+      setViewport: s.setViewport,
     })),
   );
-  const edges = useMentionEdges();
   const { screenToFlowPosition } = useReactFlow();
-  const setViewport = useCanvasStore((s) => s.setViewport);
   // Only the viewport saved at load matters; React Flow owns it from then on.
   const [savedViewport] = useState(() => useCanvasStore.getState().viewport);
 
@@ -111,44 +37,23 @@ export function Canvas() {
   };
 
   return (
-    <ReactFlow
-      nodes={nodes}
-      edges={edges}
-      nodeTypes={nodeTypes}
-      onNodesChange={onNodesChange}
+    <NoteCanvas
+      noteIds={noteIds}
+      layout={layout}
+      onPlace={placeNotes}
+      onDeleteNotes={deleteNotes}
+      onMeasure={setHeights}
       // Restore the saved pan/zoom; save it again whenever a pan or zoom ends (a natural
       // debounce: once per gesture, not per frame). Without a saved one, fit all notes.
       defaultViewport={savedViewport ?? undefined}
       onMoveEnd={(_, viewport) => setViewport(viewport)}
       onDoubleClick={handleDoubleClick}
-      onEdgeClick={(_, edge) =>
-        setHighlight({
-          kind: "link",
-          link: {
-            sourceId: edge.source,
-            handleId: edge.sourceHandle ?? "",
-            targetId: edge.target,
-          },
-        })
-      }
-      onPaneClick={() => setHighlight(null)}
-      onNodeClick={() => setHighlight(null)}
-      zoomOnDoubleClick={false}
-      // Two-finger trackpad scrolling pans; pinch (or Ctrl/Cmd + wheel) zooms. Speed 1 moves the
-      // canvas as far as the fingers move, like scrolling a page (React Flow's default is 0.5).
-      panOnScroll
-      panOnScrollSpeed={1}
-      // Edges only come from @mentions, so they can't be drawn, edited or selected by hand.
-      nodesConnectable={false}
-      edgesFocusable={false}
-      edgesReconnectable={false}
-      minZoom={0.1}
       fitView={!savedViewport}
       fitViewOptions={{ maxZoom: 1 }}
     >
       <Background variant={BackgroundVariant.Dots} gap={16} />
       <Controls showInteractive={false} showZoom={false} />
       <CommandPalette />
-    </ReactFlow>
+    </NoteCanvas>
   );
 }

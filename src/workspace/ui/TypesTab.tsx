@@ -78,7 +78,7 @@ const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
 
 /** How many notes match a type (its detail in the list). */
 function useMemberCounts() {
-  const nodes = useCanvasStore((s) => s.nodes);
+  const nodes = useCanvasStore((s) => s.notes);
   const types = useCanvasStore((s) => s.types);
   return new Map(
     types.map((t) => [t.id, members({ kind: "ref", typeId: t.id }, { nodes, types }).length]),
@@ -188,7 +188,7 @@ const PREVIEW_LIMIT = 40;
 
 function TypeForm({ initial, isNew, onSaved, onDeleted }: ItemFormProps<NamedType>) {
   const [draft, setDraft] = useState(initial);
-  const nodes = useCanvasStore((s) => s.nodes);
+  const nodes = useCanvasStore((s) => s.notes);
   const types = useCanvasStore((s) => s.types);
   const saveType = useCanvasStore((s) => s.saveType);
   const deleteType = useCanvasStore((s) => s.deleteType);
@@ -799,7 +799,7 @@ function AddOptionInput({
   onCreate: (title: string) => void;
 }) {
   const [query, setQuery] = useState("");
-  const nodes = useCanvasStore((s) => s.nodes);
+  const nodes = useCanvasStore((s) => s.notes);
   const rows = searchNotes(nodes, query, { exclude });
   const choose = (row: NoteRow) => {
     if (row.kind === "note") {

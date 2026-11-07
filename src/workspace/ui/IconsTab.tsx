@@ -44,7 +44,7 @@ function useIconUsage(ref: string) {
     return (
       s.types.filter((t) => t.icon === ref).length +
       fieldIcons.length +
-      s.nodes.filter((n) => Object.values(n.data.fields).some((v) => v.includes(ref))).length
+      s.notes.filter((n) => Object.values(n.data.fields).some((v) => v.includes(ref))).length
     );
   });
 }

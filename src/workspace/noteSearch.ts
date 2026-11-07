@@ -1,11 +1,11 @@
 import { go as fuzzySearch } from "fuzzysort";
 
-import type { EditorNode } from "../store/canvas";
+import type { Note } from "../store/canvas";
 import type { NoteId } from "./model";
 
 /** A search result: an existing note, or an offer to create one with the typed title. */
 export type NoteRow =
-  | { kind: "note"; note: EditorNode; group?: string }
+  | { kind: "note"; note: Note; group?: string }
   | { kind: "create"; title: string };
 
 export const rowKey = (row: NoteRow) => (row.kind === "note" ? row.note.id : "create");
@@ -16,7 +16,7 @@ export const rowKey = (row: NoteRow) => (row.kind === "note" ? row.note.id : "cr
  * if no note has exactly the typed title (and `create` allows it).
  */
 export function searchNotes(
-  nodes: readonly EditorNode[],
+  nodes: readonly Note[],
   query: string,
   {
     options = [],
@@ -31,7 +31,7 @@ export function searchNotes(
     return optionNotes.map((note) => ({ kind: "note", note }));
   }
 
-  const search = (notes: EditorNode[], max: number) =>
+  const search = (notes: Note[], max: number) =>
     fuzzySearch(trimmed, notes, { key: (n) => n.data.title, threshold: 0, limit: max }).map(
       (r) => r.obj,
     );

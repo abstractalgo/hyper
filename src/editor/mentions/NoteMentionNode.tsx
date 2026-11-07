@@ -89,9 +89,9 @@ export class NoteMentionNode extends DecoratorNode<JSX.Element> {
   }
 
   getTextContent(): string {
-    const { nodes, deletedTitles } = useCanvasStore.getState();
+    const { notes, deletedTitles } = useCanvasStore.getState();
     const id = this.getNoteId();
-    const title = nodes.find((n) => n.id === id)?.data.title;
+    const title = notes.find((n) => n.id === id)?.data.title;
     // A deleted note's mention reads as plain text: its last title, without the "@".
     return title === undefined ? (deletedTitles[id] ?? "deleted note") : `@${title}`;
   }

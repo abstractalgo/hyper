@@ -1,5 +1,5 @@
 import { Dialog } from "@base-ui/react/dialog";
-import { useReactFlow } from "@xyflow/react";
+import { useNodes, useReactFlow } from "@xyflow/react";
 import { go as fuzzySearch } from "fuzzysort";
 import {
   ArrowLeftRightIcon,
@@ -126,7 +126,7 @@ function PaletteBody({
   onClose: (returnToEditor: boolean) => void;
 }) {
   const [query, setQuery] = useState("");
-  const nodes = useCanvasStore((s) => s.nodes);
+  const nodes = useCanvasStore((s) => s.notes);
   const types = useCanvasStore((s) => s.types);
   const addNode = useCanvasStore((s) => s.addNode);
   const createNoteBeside = useCanvasStore((s) => s.createNoteBeside);
@@ -135,7 +135,8 @@ function PaletteBody({
   const { screenToFlowPosition, deleteElements, fitView, zoomIn, zoomOut, zoomTo } = useReactFlow();
   const goToNote = useGoToNote();
 
-  const selected = nodes.filter((n) => n.selected);
+  // Selection is the main canvas's (React Flow's), not the notes'.
+  const selected = useNodes().filter((n) => n.selected);
   const workspaces = useWorkspaces((s) => s.workspaces);
   const activeWorkspaceId = useWorkspaces((s) => s.activeId);
   const actions: Action[] = [

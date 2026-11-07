@@ -3,6 +3,7 @@ import {
   NodeResizeControl,
   Position,
   useUpdateNodeInternals,
+  type Node,
   type NodeProps,
 } from "@xyflow/react";
 import { memo, useCallback, useLayoutEffect, useRef } from "react";
@@ -10,13 +11,13 @@ import { memo, useCallback, useLayoutEffect, useRef } from "react";
 import { RichTextEditor } from "../editor/RichTextEditor";
 import { NOTE_COLOR_CLASSES } from "../workspace/model";
 import {
-  isNoteHighlighted,
   linkSide,
   oppositeSide,
   useCanvasStore,
-  type EditorNode,
+  type EditorNodeData,
   type LinkSide,
 } from "../store/canvas";
+import { isNoteHighlighted, useCanvasView } from "./canvasView";
 import { NoteProperties } from "./NoteProperties";
 import { NoteTypeMenu } from "./NoteTypeMenu";
 import { NoteTitle } from "./NoteTitle";
@@ -38,19 +39,20 @@ export const EditorNodeView = memo(function EditorNodeView({
   id,
   data,
   selected,
-}: NodeProps<EditorNode>) {
+}: NodeProps<Node<EditorNodeData, "editor">>) {
   const updateNodeData = useCanvasStore((s) => s.updateNodeData);
-  const setMentionAnchors = useCanvasStore((s) => s.setMentionAnchors);
-  const setHighlight = useCanvasStore((s) => s.setHighlight);
-  const highlighted = useCanvasStore((s) => isNoteHighlighted(s, id));
-  // Matches what Canvas draws: which sides of the title have incoming links (as one string, so
+  // Links, where notes are and what's highlighted are this canvas's (see useCanvasView).
+  const setAnchors = useCanvasView((s) => s.setAnchors);
+  const setHighlight = useCanvasView((s) => s.setHighlight);
+  const highlighted = useCanvasView((s) => isNoteHighlighted(s, id));
+  // Matches what the canvas draws: which sides of the title have incoming links (as a string, so
   // this only re-renders when that changes, not on every drag frame).
-  const incomingSides = useCanvasStore((s) =>
+  const incomingSides = useCanvasView((s) =>
     [
       ...new Set(
-        Object.entries(s.mentionAnchors).flatMap(([sourceId, sourceAnchors]) =>
-          sourceId !== id && sourceAnchors.some((a) => a.targetId === id)
-            ? [oppositeSide(linkSide(s.nodes, sourceId, id))]
+        Object.entries(s.anchors).flatMap(([sourceId, sourceAnchors]) =>
+          sourceId !== id && sourceId in s.layout && sourceAnchors.some((a) => a.targetId === id)
+            ? [oppositeSide(linkSide(s.layout, sourceId, id))]
             : [],
         ),
       ),
@@ -62,17 +64,17 @@ export const EditorNodeView = memo(function EditorNodeView({
   const contentRef = useRef<HTMLDivElement>(null);
   const anchors = useMentionAnchors(rootRef, contentRef);
   // Each mention's handle sits on the side facing the note it mentions.
-  const anchorSides = useCanvasStore((s) =>
-    anchors.map((a) => linkSide(s.nodes, id, a.targetId)).join(","),
+  const anchorSides = useCanvasView((s) =>
+    anchors.map((a) => linkSide(s.layout, id, a.targetId)).join(","),
   );
   const sideOf = (i: number) => (anchorSides.split(",")[i] ?? "right") as LinkSide;
 
   // Handles moved, appeared or disappeared: have React Flow re-measure them, and publish the
   // anchors that edges are derived from (Canvas waits for the measurement before drawing).
   useLayoutEffect(() => {
-    setMentionAnchors(id, anchors);
+    setAnchors(id, anchors);
     updateNodeInternals(id);
-  }, [id, anchors, updateNodeInternals, setMentionAnchors]);
+  }, [id, anchors, updateNodeInternals, setAnchors]);
   // Handles also move when they switch sides, as notes are dragged past each other.
   const measuredSides = useRef(anchorSides);
   useLayoutEffect(() => {
@@ -142,7 +144,7 @@ export const EditorNodeView = memo(function EditorNodeView({
             (it only skips contenteditable elements themselves, and a focused todo item isn't one, so
             arrows would move the note). No overflow: notes grow with content. */}
         <div ref={contentRef} className="nodrag nokey min-w-0 flex-1 cursor-text">
-          <RichTextEditor noteId={id} initialContent={data.content} onChange={handleChange} />
+          <RichTextEditor noteId={id} content={data.content} onChange={handleChange} />
         </div>
       </div>
       {anchors.map((anchor, i) => (

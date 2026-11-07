@@ -9,31 +9,37 @@ import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 
 import { debouncedLocalStorage } from "./debouncedStorage";
+import { isSavedBoard, toTypes } from "./toTypes";
 import { activeWorkspace, boardKey, useWorkspaces, type SampleId } from "./workspaces";
 import {
-  BUILT_IN_SCHEMAS,
-  conformValue,
   customIconRef,
-  initialValue,
   type CustomIcon,
-  type FieldAtom,
-  type FieldDef,
   type FieldValue,
-  type IconRef,
   type NoteColor,
-  type Schema,
 } from "../workspace/model";
+import {
+  BUILT_IN_TYPES,
+  entriesOfTypes,
+  mapDeclarations,
+  TYPE_KEY,
+  valueKind,
+  withOption,
+  withoutObjects,
+  type Entry,
+  type KeyId,
+  type NamedType,
+  type TypeId,
+} from "../workspace/typeSystem";
 
 export type EditorNodeData = {
   title: string;
-  /** The note's schema (type), or null for a plain note without fields. */
-  schemaId: string | null;
-  /** Values of the schema's fields, by field ID. */
-  fields: Record<string, FieldValue>;
+  /**
+   * Field values by key, including the built-in `type` (the note's types) and `icon` (its own
+   * icon, e.g. a user's avatar; unset uses its type's icon).
+   */
+  fields: Record<KeyId, FieldValue>;
   /** Tints the note's title bar and its mentions; unset for the default look. */
   color?: NoteColor | null;
-  /** The note's own icon (an icon reference, e.g. a user's avatar); unset uses its type's icon. */
-  icon?: IconRef | null;
   /** Serialized Lexical editor state (JSON), or null for an empty editor. */
   content: string | null;
 };
@@ -66,13 +72,13 @@ export type PropertiesPosition = "top" | "top-inline" | "right";
 /** What labels each field in the inline layout: its name, its icon, or both. */
 export type InlineLabels = "name" | "icon" | "both";
 
-export type SettingsTab = "fields" | "schemas" | "icons" | "workspace";
+export type SettingsTab = "types" | "icons" | "workspace";
 
 /** Everything that makes up a board: what's saved, and what the sample provides. */
 export type Board = {
   nodes: EditorNode[];
-  fields: FieldDef[];
-  schemas: Schema[];
+  /** Named types: what notes can be, their fields, and collections of notes. */
+  types: NamedType[];
   customIcons: CustomIcon[];
 };
 
@@ -110,15 +116,13 @@ type CanvasState = Board & {
   /** Adds a note to the right of `sourceId`, below any notes already there. Returns its ID. */
   createNoteBeside: (sourceId: string, title: string) => string;
   /**
-   * Creates a plain note as a new option of select field `fieldId`: placed below the field's other
-   * option notes (or right of `nearNoteId` if it has none), and appended to its options if the
-   * field is saved. `siblingIds` overrides the field's saved options (e.g. a settings draft).
+   * Creates a plain note as a new option of field `key`: placed below the field's other option
+   * notes (or right of `nearNoteId` if it has none), and added to the options its declaration
+   * lists. Returns its ID.
    */
-  createOptionNote: (
-    fieldId: string,
-    title: string,
-    place?: { nearNoteId?: string; siblingIds?: string[] },
-  ) => string;
+  createOptionNote: (key: KeyId, title: string, nearNoteId?: string) => string;
+  /** Takes a note off the options field `key` lists (the note stays). */
+  removeOption: (key: KeyId, noteId: string) => void;
   updateNodeData: (id: string, data: Partial<EditorNodeData>) => void;
   setMentionAnchors: (id: string, anchors: MentionAnchor[]) => void;
   setHoveredMention: (mention: MentionLink | null) => void;
@@ -126,41 +130,57 @@ type CanvasState = Board & {
   setViewport: (viewport: Viewport) => void;
 
   loadBoard: (board: Board) => void;
-  setNoteSchema: (noteId: string, schemaId: string | null) => void;
-  setNoteField: (noteId: string, fieldId: string, value: FieldValue) => void;
-  /** Adds or replaces a field definition; notes using it are brought in line with its rules. */
-  saveField: (field: FieldDef) => void;
-  /** Deletes a field from the workspace, every schema, and every note. */
-  deleteField: (fieldId: string) => void;
-  /** Adds or replaces a schema; notes get defaults for added fields and lose removed ones. */
-  saveSchema: (schema: Schema) => void;
-  /** Deletes a schema; its notes become plain notes (their field values are dropped). */
-  deleteSchema: (schemaId: string) => void;
+  /** Sets a note's types; required fields it doesn't have a value for get their defaults. */
+  setNoteTypes: (noteId: string, typeIds: TypeId[]) => void;
+  setNoteField: (noteId: string, key: KeyId, value: FieldValue) => void;
+  /** Adds or replaces a named type. */
+  saveType: (type: NamedType) => void;
+  /**
+   * Deletes a named type: notes are no longer of it. Types referring to it (or picking fields it
+   * declares) then match nothing there; notes keep their values.
+   */
+  deleteType: (typeId: TypeId) => void;
   /** Adds or replaces a custom icon. */
   saveCustomIcon: (icon: CustomIcon) => void;
-  /** Deletes a custom icon; types, fields, notes and values using it fall back to no icon. */
+  /** Deletes a custom icon; types, fields and values using it fall back to no icon. */
   deleteCustomIcon: (iconId: string) => void;
 };
 
-/** Whether any note has a value for the field (its type can't be changed then). */
-export const isFieldInUse = (nodes: EditorNode[], fieldId: string) =>
-  nodes.some((n) => (n.data.fields[fieldId]?.length ?? 0) > 0);
-
-/** Field values for a note of `schema`, keeping what `current` has for fields still present. */
+/**
+ * `current` field values with defaults for the required fields of `typeIds` that have none, and
+ * the types themselves in `type`.
+ */
 function fieldsFor(
-  schema: Schema | undefined,
-  fields: FieldDef[],
-  current: Record<string, FieldValue> = {},
-): Record<string, FieldValue> {
-  const out: Record<string, FieldValue> = {};
-  for (const id of schema?.fieldIds ?? []) {
-    const field = fields.find((f) => f.id === id);
-    if (field) {
-      out[id] = id in current ? conformValue(field, current[id]) : initialValue(field);
+  typeIds: TypeId[],
+  types: readonly NamedType[],
+  current: Record<KeyId, FieldValue> = {},
+): Record<KeyId, FieldValue> {
+  const out = { ...current, [TYPE_KEY]: typeIds };
+  for (const entry of entriesOfTypes(typeIds, types)) {
+    if (!entry.optional && entry.decl?.default && (out[entry.key]?.length ?? 0) === 0) {
+      out[entry.key] = [...entry.decl.default];
     }
   }
   return out;
 }
+
+/** `types` with the declaration of field `key` edited. */
+const editDeclaration = (types: NamedType[], key: KeyId, edit: (entry: Entry) => Entry) =>
+  types.map((t) => ({ ...t, expr: mapDeclarations(t.expr, (e) => (e.key === key ? edit(e) : e)) }));
+
+/** The declaration of field `key`, if any. */
+const declarationOf = (types: readonly NamedType[], key: KeyId): Entry | undefined => {
+  let found: Entry | undefined;
+  for (const t of types) {
+    mapDeclarations(t.expr, (e) => {
+      if (e.key === key) {
+        found ??= e;
+      }
+      return e;
+    });
+  }
+  return found;
+};
 
 /** Whether the edge for `link` is highlighted (hovered mention, clicked edge, or incoming). */
 export function isLinkHighlighted(
@@ -287,10 +307,8 @@ const upsertById = <T extends { id: string }>(items: readonly T[], item: T): T[]
 type NewNote = {
   title: string;
   position: XYPosition;
-  schemaId?: string | null;
-  fields?: Record<string, FieldValue>;
+  fields?: Record<KeyId, FieldValue>;
   color?: NoteColor | null;
-  icon?: IconRef | null;
   content?: string | null;
   id?: string;
   width?: number;
@@ -299,10 +317,8 @@ type NewNote = {
 export const createNote = ({
   title,
   position,
-  schemaId = null,
   fields = {},
   color = null,
-  icon = null,
   content = null,
   id = newId(),
   width = NOTE_WIDTH,
@@ -311,7 +327,7 @@ export const createNote = ({
   type: "editor",
   position,
   width,
-  data: { title, schemaId, fields, color, icon, content },
+  data: { title, fields, color, content },
 });
 
 /** Only what's worth saving: drops React Flow's runtime state (measured size, selection…). */
@@ -335,13 +351,15 @@ const BLANK = {
   deletedTitles: {},
   viewport: null,
   nodes: [],
-  fields: [],
+  types: [...BUILT_IN_TYPES],
   customIcons: [],
-  schemas: BUILT_IN_SCHEMAS,
   mentionAnchors: {},
   hoveredMention: null,
   highlight: null,
 } satisfies Partial<CanvasState>;
+
+/** The saved board's shape; 11 replaced fields and schemas with types. */
+const BOARD_VERSION = 11;
 
 const boardStorage = createJSONStorage<Partial<CanvasState>>(() => debouncedLocalStorage());
 
@@ -359,32 +377,19 @@ export const useCanvasStore = create<CanvasState>()(
           for (const id of removed) {
             delete mentionAnchors[id];
           }
-          const gone = new Set<FieldAtom>(removed);
-          // Deleted notes disappear from select fields: their options, defaults and values.
-          const fields = s.fields.map((f) =>
-            f.type === "select" && [...f.optionIds, ...f.defaultValue].some((id) => gone.has(id))
-              ? {
-                  ...f,
-                  optionIds: f.optionIds.filter((id) => !gone.has(id)),
-                  defaultValue: f.defaultValue.filter((id) => !gone.has(id)),
-                }
-              : f,
-          );
-          const selectIds = new Set(fields.filter((f) => f.type === "select").map((f) => f.id));
+          // Deleted notes disappear from fields: from the options types list, and from values.
+          const gone = new Set<string>(removed);
+          const types = s.types.map((t) => ({ ...t, expr: withoutObjects(t.expr, gone) }));
           const nodes = withoutHeight(applyNodeChanges(changes, s.nodes)).map((n) => {
-            const touched = Object.keys(n.data.fields).filter(
-              (id) => selectIds.has(id) && n.data.fields[id]!.some((v) => gone.has(v)),
+            const touched = Object.entries(n.data.fields).filter(([, v]) =>
+              v.some((x) => gone.has(String(x))),
             );
             if (touched.length === 0) {
               return n;
             }
             const values = { ...n.data.fields };
-            for (const id of touched) {
-              const field = fields.find((f) => f.id === id)!;
-              values[id] = conformValue(
-                field,
-                values[id]!.filter((v) => !gone.has(v)),
-              );
+            for (const [key, v] of touched) {
+              values[key] = v.filter((x) => !gone.has(String(x)));
             }
             return { ...n, data: { ...n.data, fields: values } };
           });
@@ -398,7 +403,7 @@ export const useCanvasStore = create<CanvasState>()(
           }
           return {
             nodes,
-            fields,
+            types,
             deletedTitles,
             mentionAnchors,
             highlight: pruneHighlight(s.highlight, nodes, mentionAnchors),
@@ -417,7 +422,7 @@ export const useCanvasStore = create<CanvasState>()(
         set((s) => ({
           settingsOpen: typeof open === "function" ? open(s.settingsOpen) : open,
         })),
-      settingsTab: "fields",
+      settingsTab: "types",
       setSettingsTab: (settingsTab) => set({ settingsTab }),
       createNoteBeside: (sourceId, title) => {
         const { nodes } = get();
@@ -427,12 +432,13 @@ export const useCanvasStore = create<CanvasState>()(
         set({ nodes: [...nodes, note] });
         return note.id;
       },
-      createOptionNote: (fieldId, title, place = {}) => {
-        const { nodes, fields } = get();
-        const field = fields.find((f) => f.id === fieldId);
-        const siblingIds = place.siblingIds ?? (field?.type === "select" ? field.optionIds : []);
+      createOptionNote: (key, title, nearNoteId) => {
+        const { nodes, types } = get();
+        const declaration = declarationOf(types, key);
+        const kind = declaration ? valueKind(declaration.type) : null;
+        const siblingIds = kind?.kind === "note" ? kind.options : [];
         const siblings = nodes.filter((n) => siblingIds.includes(n.id));
-        const near = nodes.find((n) => n.id === place.nearNoteId);
+        const near = nodes.find((n) => n.id === nearNoteId);
         const position =
           siblings.length > 0
             ? positionBelow(siblings, nodes, OPTION_NOTE_WIDTH)
@@ -442,14 +448,17 @@ export const useCanvasStore = create<CanvasState>()(
         const note = createNote({ title, position, width: OPTION_NOTE_WIDTH });
         set({
           nodes: [...nodes, note],
-          fields: fields.map((f) =>
-            f.id === fieldId && f.type === "select"
-              ? { ...f, optionIds: [...f.optionIds, note.id] }
-              : f,
-          ),
+          types: editDeclaration(types, key, (e) => ({ ...e, type: withOption(e.type, note.id) })),
         });
         return note.id;
       },
+      removeOption: (key, noteId) =>
+        set((s) => ({
+          types: editDeclaration(s.types, key, (e) => ({
+            ...e,
+            type: withoutObjects(e.type, new Set([noteId])),
+          })),
+        })),
       updateNodeData: (id, data) =>
         set((s) => ({
           nodes: s.nodes.map((n) => (n.id === id ? { ...n, data: { ...n.data, ...data } } : n)),
@@ -469,117 +478,48 @@ export const useCanvasStore = create<CanvasState>()(
       setPropertiesPosition: (propertiesPosition) => set({ propertiesPosition }),
       setInlineLabels: (inlineLabels) => set({ inlineLabels }),
 
-      loadBoard: ({ nodes, fields, schemas, customIcons }) =>
+      loadBoard: ({ nodes, types, customIcons }) =>
         set({
           initialized: true,
           nodes,
-          fields,
-          schemas,
+          types,
           customIcons,
           mentionAnchors: {},
           hoveredMention: null,
           highlight: null,
         }),
-      setNoteSchema: (noteId, schemaId) =>
-        set((s) => {
-          const schema = s.schemas.find((sc) => sc.id === schemaId);
-          return {
-            nodes: s.nodes.map((n) =>
-              n.id === noteId
-                ? {
-                    ...n,
-                    data: {
-                      ...n.data,
-                      schemaId: schema ? schema.id : null,
-                      fields: fieldsFor(schema, s.fields, n.data.fields),
-                    },
-                  }
-                : n,
-            ),
-          };
-        }),
-      setNoteField: (noteId, fieldId, value) =>
-        set((s) => {
-          const field = s.fields.find((f) => f.id === fieldId);
-          if (!field) {
-            return {};
-          }
-          return {
-            nodes: s.nodes.map((n) =>
-              n.id === noteId
-                ? {
-                    ...n,
-                    data: {
-                      ...n.data,
-                      fields: {
-                        ...n.data.fields,
-                        [fieldId]: conformValue(field, value),
-                      },
-                    },
-                  }
-                : n,
-            ),
-          };
-        }),
-      saveField: (field) =>
-        set((s) => {
-          return {
-            fields: upsertById(s.fields, field),
-            nodes: s.nodes.map((n) =>
-              field.id in n.data.fields
-                ? {
-                    ...n,
-                    data: {
-                      ...n.data,
-                      fields: {
-                        ...n.data.fields,
-                        [field.id]: conformValue(field, n.data.fields[field.id]),
-                      },
-                    },
-                  }
-                : n,
-            ),
-          };
-        }),
-      deleteField: (fieldId) =>
+      setNoteTypes: (noteId, typeIds) =>
         set((s) => ({
-          fields: s.fields.filter((f) => f.id !== fieldId),
-          schemas: s.schemas.map((sc) =>
-            sc.fieldIds.includes(fieldId)
-              ? { ...sc, fieldIds: sc.fieldIds.filter((id) => id !== fieldId) }
-              : sc,
-          ),
-          nodes: s.nodes.map((n) => {
-            if (!(fieldId in n.data.fields)) {
-              return n;
-            }
-            const { [fieldId]: _removed, ...fields } = n.data.fields;
-            return { ...n, data: { ...n.data, fields } };
-          }),
-        })),
-      saveSchema: (schema) =>
-        set((s) => {
-          return {
-            schemas: upsertById(s.schemas, schema),
-            nodes: s.nodes.map((n) =>
-              n.data.schemaId === schema.id
-                ? {
-                    ...n,
-                    data: {
-                      ...n.data,
-                      fields: fieldsFor(schema, s.fields, n.data.fields),
-                    },
-                  }
-                : n,
-            ),
-          };
-        }),
-      deleteSchema: (schemaId) =>
-        set((s) => ({
-          schemas: s.schemas.filter((sc) => sc.id !== schemaId || sc.builtIn),
           nodes: s.nodes.map((n) =>
-            n.data.schemaId === schemaId && !s.schemas.find((sc) => sc.id === schemaId)?.builtIn
-              ? { ...n, data: { ...n.data, schemaId: null, fields: {} } }
+            n.id === noteId
+              ? { ...n, data: { ...n.data, fields: fieldsFor(typeIds, s.types, n.data.fields) } }
+              : n,
+          ),
+        })),
+      setNoteField: (noteId, key, value) =>
+        set((s) => ({
+          nodes: s.nodes.map((n) =>
+            n.id === noteId
+              ? { ...n, data: { ...n.data, fields: { ...n.data.fields, [key]: value } } }
+              : n,
+          ),
+        })),
+      saveType: (type) => set((s) => ({ types: upsertById(s.types, type) })),
+      deleteType: (typeId) =>
+        set((s) => ({
+          types: s.types.filter((t) => t.id !== typeId || t.builtIn),
+          nodes: s.nodes.map((n) =>
+            n.data.fields[TYPE_KEY]?.includes(typeId)
+              ? {
+                  ...n,
+                  data: {
+                    ...n.data,
+                    fields: {
+                      ...n.data.fields,
+                      [TYPE_KEY]: n.data.fields[TYPE_KEY].filter((id) => id !== typeId),
+                    },
+                  },
+                }
               : n,
           ),
         })),
@@ -587,40 +527,23 @@ export const useCanvasStore = create<CanvasState>()(
       deleteCustomIcon: (iconId) =>
         set((s) => {
           const ref = customIconRef(iconId);
-          const iconFieldIds = new Set(s.fields.filter((f) => f.type === "icon").map((f) => f.id));
+          const unset = (e: Entry): Entry =>
+            e.decl?.icon === ref ? { ...e, decl: { ...e.decl, icon: undefined } } : e;
           return {
             customIcons: s.customIcons.filter((i) => i.id !== iconId),
-            schemas: s.schemas.map((sc) => (sc.icon === ref ? { ...sc, icon: "file-text" } : sc)),
-            fields: s.fields.map((f): FieldDef => {
-              const field = f.icon === ref ? { ...f, icon: undefined } : f;
-              return field.type === "icon" && field.defaultValue.includes(ref)
-                ? {
-                    ...field,
-                    defaultValue: field.defaultValue.filter((v) => v !== ref),
-                  }
-                : field;
-            }),
+            types: s.types.map((t) => ({
+              ...t,
+              icon: t.icon === ref ? "file-text" : t.icon,
+              expr: mapDeclarations(withoutObjects(t.expr, new Set([ref])), unset),
+            })),
             nodes: s.nodes.map((n) => {
-              const usesIt = Object.entries(n.data.fields).some(
-                ([id, v]) => iconFieldIds.has(id) && v.includes(ref),
-              );
-              if (n.data.icon !== ref && !usesIt) {
+              if (!Object.values(n.data.fields).some((v) => v.includes(ref))) {
                 return n;
               }
               const fields = Object.fromEntries(
-                Object.entries(n.data.fields).map(([id, v]) => [
-                  id,
-                  iconFieldIds.has(id) ? v.filter((x) => x !== ref) : v,
-                ]),
+                Object.entries(n.data.fields).map(([key, v]) => [key, v.filter((x) => x !== ref)]),
               );
-              return {
-                ...n,
-                data: {
-                  ...n.data,
-                  icon: n.data.icon === ref ? null : n.data.icon,
-                  fields,
-                },
-              };
+              return { ...n, data: { ...n.data, fields } };
             }),
           };
         }),
@@ -628,14 +551,15 @@ export const useCanvasStore = create<CanvasState>()(
     {
       // The active workspace's board; switching workspaces points this at another one.
       name: boardKey(activeWorkspace().id),
-      version: 10,
+      version: BOARD_VERSION,
+      // openWorkspace loads saved boards (and brings older ones up to date), not the middleware.
+      skipHydration: true,
       storage: boardStorage,
       partialize: (s) => ({
         initialized: s.initialized,
         viewport: s.viewport,
         nodes: s.nodes.map(persistedNode),
-        fields: s.fields,
-        schemas: s.schemas,
+        types: s.types,
         customIcons: s.customIcons,
         deletedTitles: s.deletedTitles,
         propertiesPosition: s.propertiesPosition,
@@ -645,10 +569,16 @@ export const useCanvasStore = create<CanvasState>()(
   ),
 );
 
-const SAMPLE_BOARDS: Record<SampleId, () => Promise<Board>> = {
-  ledgerly: () => import("../sample/ledgerly").then((m) => m.createLedgerlyBoard()),
-  research: () => import("../sample/research").then((m) => m.createResearchBoard()),
-  "group-theory": () => import("../sample/groupTheory").then((m) => m.createGroupTheoryBoard()),
+/** Each sample's module: its board, and its collections as found on a board made from it. */
+type SampleModule = {
+  createBoard: () => Board;
+  collectionsFor: (board: Board) => NamedType[];
+};
+
+const SAMPLES: Record<SampleId, () => Promise<SampleModule>> = {
+  ledgerly: () => import("../sample/ledgerly"),
+  research: () => import("../sample/research"),
+  "group-theory": () => import("../sample/groupTheory"),
 };
 
 /**
@@ -662,12 +592,24 @@ export async function openWorkspace(workspaceId: string) {
     return;
   }
   const name = boardKey(workspaceId);
-  const saved = (await boardStorage!.getItem(name))?.state;
+  let saved = (await boardStorage!.getItem(name))?.state;
   const board = saved?.initialized
     ? null
     : workspace.sample
-      ? await SAMPLE_BOARDS[workspace.sample]()
-      : { nodes: [], fields: [], schemas: BUILT_IN_SCHEMAS, customIcons: [] };
+      ? (await SAMPLES[workspace.sample]()).createBoard()
+      : { nodes: [], types: [...BUILT_IN_TYPES], customIcons: [] };
+  // Boards saved with fields and schemas are converted to types. A sample's board without
+  // collections also gets the sample's, matched to its types, fields and notes by name (those
+  // that no longer resolve are left out).
+  if (saved?.initialized && isSavedBoard(saved)) {
+    const { fields: _fields, schemas: _schemas, collections, ...rest } = saved;
+    const converted = toTypes(saved);
+    const sampleCollections =
+      !collections?.length && workspace.sample
+        ? (await SAMPLES[workspace.sample]()).collectionsFor(converted)
+        : [];
+    saved = { ...rest, ...converted, types: [...converted.types, ...sampleCollections] };
+  }
   // From here on, synchronously: the store is saved to the new key from the first change.
   useCanvasStore.persist.setOptions({ name });
   useCanvasStore.setState({ ...BLANK, ...saved });
@@ -695,6 +637,11 @@ export function useNoteData<K extends keyof EditorNodeData>(
   key: K,
 ): EditorNodeData[K] | undefined {
   return useCanvasStore((s) => s.nodes.find((n) => n.id === noteId)?.data[key]);
+}
+
+/** A note's value for field `key`: undefined if the note doesn't exist or never had one. */
+export function useNoteField(noteId: string, key: KeyId): FieldValue | undefined {
+  return useCanvasStore((s) => s.nodes.find((n) => n.id === noteId)?.data.fields[key]);
 }
 
 /** A side of a note: where a link leaves the mentioning note, or enters the mentioned one. */

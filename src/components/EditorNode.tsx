@@ -18,7 +18,7 @@ import {
   type LinkSide,
 } from "../store/canvas";
 import { NoteProperties } from "./NoteProperties";
-import { NoteSchemaMenu } from "./NoteSchemaMenu";
+import { NoteTypeMenu } from "./NoteTypeMenu";
 import { NoteTitle } from "./NoteTitle";
 import { useMentionAnchors } from "./useMentionAnchors";
 
@@ -111,7 +111,7 @@ export const EditorNodeView = memo(function EditorNodeView({
             : "border-gray-200 bg-gray-50 text-gray-900"
         }`}
       >
-        <NoteSchemaMenu noteId={id} />
+        <NoteTypeMenu noteId={id} />
         <div className="min-w-0 flex-1">
           <NoteTitle title={data.title} onRename={handleRename} />
         </div>

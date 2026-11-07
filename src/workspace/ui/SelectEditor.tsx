@@ -5,28 +5,31 @@ import { useRef, useState } from "react";
 import { useCanvasStore, useNoteData, type EditorNode } from "../../store/canvas";
 import { rowKey, searchNotes, type NoteRow } from "../noteSearch";
 import { NoteIcon } from "../icons";
-import {
-  NOTE_COLOR_CLASSES,
-  NOTE_COLORS,
-  type NoteColor,
-  type NoteId,
-  type SelectFieldDef,
-} from "../model";
+import { NOTE_COLOR_CLASSES, NOTE_COLORS, type NoteColor, type NoteId } from "../model";
+import { members, type NamedType, type TypeExpr } from "../typeSystem";
 import { POPUP_CLASS, POSITIONER_CLASS, usePopupContainer } from "./popups";
 import { ResultList, useListNavigation } from "./ResultList";
 
-/** A stable empty list for the closed picker's store selector. */
+/** Stable empty lists for the closed picker's store selectors. */
 const NO_NOTES: EditorNode[] = [];
+const NO_TYPES: NamedType[] = [];
 
 type SelectEditorProps = {
-  field: SelectFieldDef;
+  /** The field's name. */
+  label: string;
+  /** Several notes (a list), or one. */
+  many: boolean;
+  /** Notes listed first (the field's options); any other note can be found by searching. */
+  options: NoteId[];
+  /** If set, only notes of this type can be picked (and they're the options). */
+  within: TypeExpr | null;
   /** Selected note IDs. */
   value: NoteId[];
   onChange: (value: NoteId[]) => void;
-  /** The field's option list changed (an option was removed from it). */
-  onOptionIdsChange: (optionIds: NoteId[]) => void;
-  /** Creates a note titled `title` as a new option of this field; returns its ID. */
-  onCreateOption: (title: string) => NoteId;
+  /** Takes a note off the field's options; unset, options can't be removed here. */
+  onRemoveOption?: (noteId: NoteId) => void;
+  /** Creates a note titled `title` as a new option of this field; returns its ID. Unset: no creating. */
+  onCreateOption?: (title: string) => NoteId;
   /** The note being edited, if any: excluded from the choices. */
   noteId?: NoteId;
   /** Whether the last value may be removed (false for mandatory fields). */
@@ -77,13 +80,17 @@ export function CreateRow({ title }: { title: string }) {
 
 /**
  * Notion-style select whose options are notes. With nothing typed it lists the field's options;
- * typing matches the options first, then any other note, and offers to create a new note.
+ * typing matches the options first, then any other note, and offers to create a new note. A field
+ * of a type (e.g. Team) offers that type's notes, and only they can be picked.
  */
 export function SelectEditor({
-  field,
+  label,
+  many,
+  options,
+  within,
   value,
   onChange,
-  onOptionIdsChange,
+  onRemoveOption,
   onCreateOption,
   noteId,
   allowEmpty,
@@ -95,17 +102,20 @@ export function SelectEditor({
   const container = usePopupContainer();
   // Only read while open: subscribing to every note would re-render this on every drag frame.
   const nodes = useCanvasStore((s) => (open ? s.nodes : NO_NOTES));
+  const types = useCanvasStore((s) => (open ? s.types : NO_TYPES));
 
+  const choices = within ? members(within, { nodes, types }) : nodes;
   const canRemove = allowEmpty || value.length > 1;
-  const rows = searchNotes(nodes, query, {
-    options: field.optionIds,
+  const rows = searchNotes(choices, query, {
+    options: within ? choices.map((n) => n.id) : options,
     exclude: noteId ? [noteId] : [],
+    create: onCreateOption !== undefined,
   });
 
   const remove = (id: NoteId) => onChange(value.filter((v) => v !== id));
   const pick = (id: NoteId) => {
     setQuery("");
-    if (!field.multiple) {
+    if (!many) {
       onChange([id]);
       setOpen(false);
     } else if (value.includes(id)) {
@@ -117,7 +127,7 @@ export function SelectEditor({
     }
   };
   const choose = (row: NoteRow) =>
-    pick(row.kind === "create" ? onCreateOption(row.title) : row.note.id);
+    pick(row.kind === "create" ? onCreateOption!(row.title) : row.note.id);
   const nav = useListNavigation(rows, choose);
 
   return (
@@ -132,7 +142,7 @@ export function SelectEditor({
       }}
     >
       <Popover.Trigger
-        aria-label={field.name}
+        aria-label={label}
         // -ml-1 offsets px-1, so the pills line up with the other values; the hover background
         // still gets its padding.
         className="-ml-1 flex min-h-6 w-full min-w-0 flex-wrap items-center gap-1 rounded px-1 py-0.5 text-left hover:bg-gray-100"
@@ -150,7 +160,7 @@ export function SelectEditor({
                 noteId={editingId}
                 onBack={() => setEditingId(null)}
                 onRemoveFromOptions={() => {
-                  onOptionIdsChange(field.optionIds.filter((id) => id !== editingId));
+                  onRemoveOption?.(editingId);
                   setEditingId(null);
                 }}
               />
@@ -166,7 +176,7 @@ export function SelectEditor({
                   ))}
                   <input
                     ref={inputRef}
-                    aria-label={`Search or create ${field.name}`}
+                    aria-label={`Search or create ${label}`}
                     placeholder={value.length ? "" : "Search or create a note…"}
                     value={query}
                     onChange={(e) => {
@@ -190,7 +200,11 @@ export function SelectEditor({
                   active={nav.active}
                   setActive={nav.setActive}
                   className="max-h-64 overflow-y-auto p-1"
-                  empty="No options yet. Type to find or create a note."
+                  empty={
+                    within
+                      ? "No notes of this type."
+                      : "No options yet. Type to find or create a note."
+                  }
                   renderItem={(row) => (
                     <>
                       <button
@@ -204,7 +218,7 @@ export function SelectEditor({
                           <NotePill noteId={row.note.id} />
                         )}
                       </button>
-                      {row.kind === "note" && field.optionIds.includes(row.note.id) && (
+                      {row.kind === "note" && onRemoveOption && options.includes(row.note.id) && (
                         <button
                           type="button"
                           aria-label={`Edit ${row.note.data.title}`}

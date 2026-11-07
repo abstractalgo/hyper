@@ -3,6 +3,7 @@ import { useState } from "react";
 import { newId, useCanvasStore } from "../../store/canvas";
 import { IconByName } from "../icons";
 import { customIconRef, validateCustomIcon, type CustomIcon } from "../model";
+import { declarations } from "../typeSystem";
 import {
   DeleteButton,
   FormErrors,
@@ -36,18 +37,14 @@ export function IconsTab() {
   );
 }
 
-/** How many places reference an icon: types, fields, notes and Icon field values. */
+/** How many places reference an icon: types, fields, and notes (their icons and Icon fields). */
 function useIconUsage(ref: string) {
   return useCanvasStore((s) => {
-    const iconFields = new Set(s.fields.filter((f) => f.type === "icon").map((f) => f.id));
+    const fieldIcons = [...declarations(s.types).values()].filter((e) => e.decl?.icon === ref);
     return (
-      s.schemas.filter((sc) => sc.icon === ref).length +
-      s.fields.filter((f) => f.icon === ref).length +
-      s.nodes.filter(
-        (n) =>
-          n.data.icon === ref ||
-          Object.entries(n.data.fields).some(([id, v]) => iconFields.has(id) && v.includes(ref)),
-      ).length
+      s.types.filter((t) => t.icon === ref).length +
+      fieldIcons.length +
+      s.nodes.filter((n) => Object.values(n.data.fields).some((v) => v.includes(ref))).length
     );
   });
 }

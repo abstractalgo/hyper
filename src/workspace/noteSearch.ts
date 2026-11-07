@@ -13,7 +13,7 @@ export const rowKey = (row: NoteRow) => (row.kind === "note" ? row.note.id : "cr
 /**
  * Fuzzy note search for pickers: the given `options` come first (in their order) and are all
  * listed when nothing is typed; then other matching notes (under "Other notes"); then "Create …"
- * if no note has exactly the typed title.
+ * if no note has exactly the typed title (and `create` allows it).
  */
 export function searchNotes(
   nodes: readonly EditorNode[],
@@ -22,7 +22,8 @@ export function searchNotes(
     options = [],
     exclude = [],
     limit = 8,
-  }: { options?: NoteId[]; exclude?: NoteId[]; limit?: number },
+    create = true,
+  }: { options?: NoteId[]; exclude?: NoteId[]; limit?: number; create?: boolean },
 ): NoteRow[] {
   const trimmed = query.trim();
   const optionNotes = options.flatMap((id) => nodes.filter((n) => n.id === id));
@@ -44,5 +45,5 @@ export function searchNotes(
     })),
   ];
   const exists = nodes.some((n) => n.data.title.toLowerCase() === trimmed.toLowerCase());
-  return exists ? rows : [...rows, { kind: "create", title: trimmed }];
+  return exists || !create ? rows : [...rows, { kind: "create", title: trimmed }];
 }

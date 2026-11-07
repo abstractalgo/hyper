@@ -26,6 +26,7 @@ import {
 import { nextNoteTitle, NOTE_WIDTH, openWorkspace, useCanvasStore } from "../store/canvas";
 import { useWorkspaces } from "../store/workspaces";
 import { NoteIcon } from "../workspace/icons";
+import { TYPE_KEY } from "../workspace/typeSystem";
 import { ResultList, useListNavigation } from "../workspace/ui/ResultList";
 import { useGoToNote } from "./useGoToNote";
 
@@ -126,7 +127,7 @@ function PaletteBody({
 }) {
   const [query, setQuery] = useState("");
   const nodes = useCanvasStore((s) => s.nodes);
-  const schemas = useCanvasStore((s) => s.schemas);
+  const types = useCanvasStore((s) => s.types);
   const addNode = useCanvasStore((s) => s.addNode);
   const createNoteBeside = useCanvasStore((s) => s.createNoteBeside);
   const updateNodeData = useCanvasStore((s) => s.updateNodeData);
@@ -265,7 +266,9 @@ function PaletteBody({
         key: n.id,
         text: n.data.title,
         icon: <NoteIcon noteId={n.id} className="size-4" />,
-        hint: schemas.find((s) => s.id === n.data.schemaId)?.name,
+        hint: (n.data.fields[TYPE_KEY] ?? [])
+          .flatMap((id) => types.filter((t) => t.id === id).map((t) => t.name))
+          .join(", "),
         run: () => goToNote(n.id),
       }));
 

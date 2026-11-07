@@ -1,9 +1,8 @@
 import { Tabs } from "@base-ui/react/tabs";
 
 import { useCanvasStore, type SettingsTab } from "../../store/canvas";
-import { FieldsTab } from "./FieldsTab";
 import { IconsTab } from "./IconsTab";
-import { SchemasTab } from "./SchemasTab";
+import { TypesTab } from "./TypesTab";
 import { WorkspaceTab } from "./WorkspaceTab";
 
 const tabClass =
@@ -21,11 +20,8 @@ export default function SettingsPanel() {
       className="flex min-h-0 flex-1 flex-col"
     >
       <Tabs.List className="flex gap-2 border-b border-gray-200 px-2">
-        <Tabs.Tab value="fields" className={tabClass}>
-          Fields
-        </Tabs.Tab>
-        <Tabs.Tab value="schemas" className={tabClass}>
-          Schemas
+        <Tabs.Tab value="types" className={tabClass}>
+          Types
         </Tabs.Tab>
         <Tabs.Tab value="icons" className={tabClass}>
           Icons
@@ -34,11 +30,8 @@ export default function SettingsPanel() {
           Workspace
         </Tabs.Tab>
       </Tabs.List>
-      <Tabs.Panel value="fields" className="flex min-h-0 flex-1">
-        <FieldsTab />
-      </Tabs.Panel>
-      <Tabs.Panel value="schemas" className="flex min-h-0 flex-1">
-        <SchemasTab />
+      <Tabs.Panel value="types" className="flex min-h-0 flex-1">
+        <TypesTab />
       </Tabs.Panel>
       <Tabs.Panel value="icons" className="flex min-h-0 flex-1">
         <IconsTab />

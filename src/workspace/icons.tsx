@@ -1,15 +1,9 @@
 import { StickyNoteIcon } from "lucide-react";
 import { DynamicIcon, iconNames, type IconName } from "lucide-react/dynamic";
 
-import { useCanvasStore, useNoteData } from "../store/canvas";
-import {
-  customIconId,
-  FIELD_TYPE_SPECS,
-  fieldIcon,
-  SCHEMA_COLOR_CLASSES,
-  type FieldDef,
-  type FieldType,
-} from "./model";
+import { useCanvasStore, useNoteField } from "../store/canvas";
+import { customIconId, INPUT_SPECS, TYPE_COLOR_CLASSES, type IconRef } from "./model";
+import { ICON_KEY, TYPE_KEY, valueKind, type Entry } from "./typeSystem";
 
 export const ICON_NAMES: readonly IconName[] = iconNames;
 const KNOWN_ICONS = new Set<string>(iconNames);
@@ -55,43 +49,44 @@ export function IconByName({
   );
 }
 
-/**
- * A field's icon (its own, or its type's), in muted gray. Decorative: it always sits next to the
- * field's name, so it isn't announced separately.
- */
-export function FieldIcon({
-  field,
-  className = "",
-}: IconProps & { field: Pick<FieldDef, "icon" | "type"> }) {
-  return <IconByName name={fieldIcon(field)} className={`shrink-0 text-gray-500 ${className}`} />;
+/** A field's icon: its declaration's own, or else one for what its values are. */
+function fieldIconRef(entry: Entry): IconRef {
+  if (entry.decl?.icon) {
+    return entry.decl.icon;
+  }
+  const kind = valueKind(entry.type);
+  if (kind.kind === "input") {
+    return INPUT_SPECS[kind.input].icon;
+  }
+  return kind.kind === "type" ? "shapes" : "list";
 }
 
-/** A type's icon (Text, Number, …), in muted gray. */
-export function FieldTypeIcon({ type, className = "" }: IconProps & { type: FieldType }) {
+/**
+ * A field's icon, in muted gray. Decorative: it always sits next to the field's name, so it isn't
+ * announced separately.
+ */
+export function FieldIcon({ entry, className = "" }: IconProps & { entry: Entry }) {
   return (
-    <IconByName
-      name={FIELD_TYPE_SPECS[type].icon}
-      className={`shrink-0 text-gray-500 ${className}`}
-    />
+    <IconByName name={fieldIconRef(entry)} className={`shrink-0 text-gray-500 ${className}`} />
   );
 }
 
-/** A schema's icon in its color; plain notes (no schema) get a sticky-note icon. */
-export function SchemaIcon({ schemaId, className = "" }: IconProps & { schemaId: string | null }) {
-  const schema = useCanvasStore((s) => s.schemas.find((sc) => sc.id === schemaId));
-  if (!schema) {
+/** A named type's icon in its color; no type (plain notes) gets a sticky-note icon. */
+export function TypeIcon({ typeId, className = "" }: IconProps & { typeId: string | null }) {
+  const type = useCanvasStore((s) => s.types.find((t) => t.id === typeId));
+  if (!type) {
     return <StickyNoteIcon aria-label="Note" className={`shrink-0 text-gray-400 ${className}`} />;
   }
   return (
     <IconByName
-      name={schema.icon}
-      label={schema.name}
-      className={`shrink-0 ${SCHEMA_COLOR_CLASSES[schema.color]} ${className}`}
+      name={type.icon}
+      label={type.name}
+      className={`shrink-0 ${TYPE_COLOR_CLASSES[type.color]} ${className}`}
     />
   );
 }
 
-/** How a note is represented next to its title: its own icon if set, else its type's icon. */
+/** How a note is represented next to its title: its own icon if set, else its first type's. */
 export function NoteIcon({
   noteId,
   className = "",
@@ -101,13 +96,13 @@ export function NoteIcon({
   /** Whether plain notes (no type, no icon of their own) get the sticky-note icon, or nothing. */
   showPlain?: boolean;
 }) {
-  const schemaId = useNoteData(noteId, "schemaId") ?? null;
-  const icon = useNoteData(noteId, "icon");
-  if (icon) {
-    return <IconByName name={icon} className={`shrink-0 ${className}`} />;
+  const typeId = useNoteField(noteId, TYPE_KEY)?.[0];
+  const icon = useNoteField(noteId, ICON_KEY)?.[0];
+  if (icon !== undefined) {
+    return <IconByName name={String(icon)} className={`shrink-0 ${className}`} />;
   }
-  if (schemaId === null && !showPlain) {
+  if (typeId === undefined && !showPlain) {
     return null;
   }
-  return <SchemaIcon schemaId={schemaId} className={className} />;
+  return <TypeIcon typeId={typeId === undefined ? null : String(typeId)} className={className} />;
 }

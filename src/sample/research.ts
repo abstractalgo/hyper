@@ -1,4 +1,18 @@
-import { at, avatarUrl, b, buildBoard, i, link, ref, type Sample } from "./build";
+import {
+  all,
+  any,
+  none,
+  at,
+  avatarUrl,
+  b,
+  buildBoard,
+  i,
+  link,
+  ref,
+  sampleCollections,
+  type Sample,
+} from "./build";
+import type { Board } from "../store/canvas";
 
 // A made-up PhD project on summarizing long documents: the question, hypotheses that answer it,
 // experiments that test them, the papers they build on, and the thesis chapter that writes it up.
@@ -299,7 +313,23 @@ const sample: Sample<NoteKey, FieldKey, SchemaKey> = {
     },
   },
   optionsX: 2300,
+  collections: [
+    {
+      name: "Reading list",
+      type: ({ schema, is }) => all(schema("paper"), is("reading", "To read", "Reading")),
+    },
+    {
+      name: "Active work",
+      type: ({ schema, is }) =>
+        all(any(schema("experiment"), schema("draft")), none(is("status", "Done"))),
+    },
+    {
+      name: "Tomás's active work",
+      type: ({ is, collection }) => all(collection("Active work"), is("owner", "tomas")),
+    },
+  ],
 };
 
 /** The research sample: a thesis question, hypotheses, experiments, papers and a draft chapter. */
-export const createResearchBoard = () => buildBoard(sample);
+export const createBoard = () => buildBoard(sample);
+export const collectionsFor = (board: Board) => sampleCollections(sample, board);

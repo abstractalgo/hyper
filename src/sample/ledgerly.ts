@@ -1,4 +1,19 @@
-import { at, avatarUrl, b, buildBoard, code, i, link, ref, type Sample } from "./build";
+import {
+  all,
+  any,
+  none,
+  at,
+  avatarUrl,
+  b,
+  buildBoard,
+  code,
+  i,
+  link,
+  ref,
+  sampleCollections,
+  type Sample,
+} from "./build";
+import type { Board } from "../store/canvas";
 
 // A made-up project: "Ledgerly", an expense-tracking app. Each note is a feature task.
 
@@ -398,7 +413,20 @@ const sample: Sample<NoteKey, FieldKey, SchemaKey> = {
   },
   notes,
   optionsX: 2300,
+  collections: [
+    { name: "Team", type: ({ schema }) => schema("user") },
+    {
+      name: "Open work",
+      type: ({ schema, is }) =>
+        all(any(schema("task"), schema("bug"), schema("spike")), none(is("status", "Done"))),
+    },
+    {
+      name: "Priya's open work",
+      type: ({ is, collection }) => all(collection("Open work"), is("assignee", "priya")),
+    },
+  ],
 };
 
 /** The Ledgerly sample: Task, Bug, Spike and Epic notes for a made-up expense-tracking app. */
-export const createLedgerlyBoard = () => buildBoard(sample);
+export const createBoard = () => buildBoard(sample);
+export const collectionsFor = (board: Board) => sampleCollections(sample, board);

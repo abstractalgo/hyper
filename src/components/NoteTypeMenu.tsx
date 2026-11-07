@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 
 import { useCanvasStore, useNoteData, useNoteField } from "../store/canvas";
 import { IconByName, NoteIcon, TypeIcon } from "../workspace/icons";
+import { useFlowClasses } from "./canvasView";
 import { NOTE_COLOR_CLASSES, NOTE_COLORS, type NoteColor } from "../workspace/model";
 import { ICON_KEY, isForNotes, TYPE_KEY } from "../workspace/typeSystem";
 import { IconPicker } from "../workspace/ui/IconPicker";
@@ -62,6 +63,7 @@ export function NoteTypeMenu({ noteId }: NoteTypeMenuProps) {
   const onColorChange = (c: NoteColor | null) => updateNodeData(noteId, { color: c });
   const onIconChange = (i: string | null) => setNoteField(noteId, ICON_KEY, i ? [i] : []);
   const triggerRef = useRef<HTMLButtonElement>(null);
+  const { noDrag } = useFlowClasses();
   const [pickingIcon, setPickingIcon] = useState(false);
   const allTypes = useCanvasStore((s) => s.types);
   // Types notes can be of (and any the note has anyway).
@@ -78,7 +80,7 @@ export function NoteTypeMenu({ noteId }: NoteTypeMenuProps) {
         <Menu.Trigger
           ref={triggerRef}
           aria-label={`${current?.name ?? "Note"}, change types, icon or color`}
-          className={`nodrag flex size-5 shrink-0 cursor-pointer items-center justify-center rounded hover:bg-black/10 focus-visible:outline-2 focus-visible:outline-blue-600 data-popup-open:bg-black/10`}
+          className={`${noDrag} flex size-5 shrink-0 cursor-pointer items-center justify-center rounded hover:bg-black/10 focus-visible:outline-2 focus-visible:outline-blue-600 data-popup-open:bg-black/10`}
         >
           <NoteIcon noteId={noteId} className="size-3.5" />
         </Menu.Trigger>

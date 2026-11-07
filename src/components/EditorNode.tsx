@@ -2,11 +2,11 @@ import {
   Handle,
   NodeResizeControl,
   Position,
-  useUpdateNodeInternals,
+  useStoreApi,
   type Node,
   type NodeProps,
 } from "@xyflow/react";
-import { memo, useCallback, useLayoutEffect, useRef } from "react";
+import { memo, useCallback, useContext, useLayoutEffect, useMemo, useRef } from "react";
 
 import { RichTextEditor } from "../editor/RichTextEditor";
 import { NOTE_COLOR_CLASSES } from "../workspace/model";
@@ -17,7 +17,7 @@ import {
   type EditorNodeData,
   type LinkSide,
 } from "../store/canvas";
-import { isNoteHighlighted, useCanvasView } from "./canvasView";
+import { AncestorsContext, isNoteHighlighted, useCanvasView, useFlowClasses } from "./canvasView";
 import { NoteProperties } from "./NoteProperties";
 import { NoteTypeMenu } from "./NoteTypeMenu";
 import { NoteTitle } from "./NoteTitle";
@@ -43,6 +43,7 @@ export const EditorNodeView = memo(function EditorNodeView({
   const updateNodeData = useCanvasStore((s) => s.updateNodeData);
   // Links, where notes are and what's highlighted are this canvas's (see useCanvasView).
   const setAnchors = useCanvasView((s) => s.setAnchors);
+  const { noDrag } = useFlowClasses();
   const setHighlight = useCanvasView((s) => s.setHighlight);
   const highlighted = useCanvasView((s) => isNoteHighlighted(s, id));
   // Matches what the canvas draws: which sides of the title have incoming links (as a string, so
@@ -59,8 +60,17 @@ export const EditorNodeView = memo(function EditorNodeView({
     ].join(","),
   );
   const propertiesRight = useCanvasStore((s) => s.propertiesPosition === "right");
-  const updateNodeInternals = useUpdateNodeInternals();
+  // Re-measures this note's handles, from its own element: React Flow's useUpdateNodeInternals
+  // looks the note up by ID inside the whole canvas, which would find the same note shown in a
+  // canvas inside another note.
+  const flowStore = useStoreApi();
   const rootRef = useRef<HTMLDivElement>(null);
+  const updateNodeInternals = useCallback(() => {
+    const nodeElement = rootRef.current?.closest<HTMLDivElement>(".react-flow__node");
+    if (nodeElement) {
+      flowStore.getState().updateNodeInternals(new Map([[id, { id, nodeElement, force: true }]]));
+    }
+  }, [id, flowStore]);
   const contentRef = useRef<HTMLDivElement>(null);
   const anchors = useMentionAnchors(rootRef, contentRef);
   // Each mention's handle sits on the side facing the note it mentions.
@@ -73,7 +83,7 @@ export const EditorNodeView = memo(function EditorNodeView({
   // anchors that edges are derived from (Canvas waits for the measurement before drawing).
   useLayoutEffect(() => {
     setAnchors(id, anchors);
-    updateNodeInternals(id);
+    updateNodeInternals();
   }, [id, anchors, updateNodeInternals, setAnchors]);
   // Handles also move when they switch sides, as notes are dragged past each other.
   const measuredSides = useRef(anchorSides);
@@ -82,13 +92,16 @@ export const EditorNodeView = memo(function EditorNodeView({
       return;
     }
     measuredSides.current = anchorSides;
-    updateNodeInternals(id);
-  }, [id, anchorSides, updateNodeInternals]);
+    updateNodeInternals();
+  }, [anchorSides, updateNodeInternals]);
 
   const handleChange = useCallback(
     (content: string) => updateNodeData(id, { content }),
     [id, updateNodeData],
   );
+  // Views in this note's text (e.g. a canvas) are inside this note, and whatever contains it.
+  const outer = useContext(AncestorsContext);
+  const ancestors = useMemo(() => [...outer, id], [outer, id]);
   const handleRename = useCallback(
     (title: string) => updateNodeData(id, { title }),
     [id, updateNodeData],
@@ -126,7 +139,7 @@ export const EditorNodeView = memo(function EditorNodeView({
             isConnectable={false}
             // Hidden rather than unmounted, so it's already measured when the first edge arrives.
             className={`note-handle ${
-              incomingSides.includes(side) ? "note-handle-clickable nodrag" : "invisible"
+              incomingSides.includes(side) ? `note-handle-clickable ${noDrag}` : "invisible"
             }`}
             onClick={(e) => {
               // Don't let the node's own click handler clear the highlight right away.
@@ -143,8 +156,10 @@ export const EditorNodeView = memo(function EditorNodeView({
         {/* nodrag: selecting text shouldn't drag the note. nokey: React Flow ignores keys typed here
             (it only skips contenteditable elements themselves, and a focused todo item isn't one, so
             arrows would move the note). No overflow: notes grow with content. */}
-        <div ref={contentRef} className="nodrag nokey min-w-0 flex-1 cursor-text">
-          <RichTextEditor noteId={id} content={data.content} onChange={handleChange} />
+        <div ref={contentRef} className={`${noDrag} nokey min-w-0 flex-1 cursor-text`}>
+          <AncestorsContext.Provider value={ancestors}>
+            <RichTextEditor noteId={id} content={data.content} onChange={handleChange} />
+          </AncestorsContext.Provider>
         </div>
       </div>
       {anchors.map((anchor, i) => (

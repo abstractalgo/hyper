@@ -11,6 +11,7 @@ import {
 import { useMemo, useState, type ReactNode } from "react";
 import { useShallow } from "zustand/react/shallow";
 
+import { useFlowClasses } from "../../components/canvasView";
 import { newId, useCanvasStore } from "../../store/canvas";
 import { TypeIcon } from "../../workspace/icons";
 import {
@@ -82,8 +83,8 @@ export function useRowFields(rowIds: string[]): RowField[] {
 
 /**
  * A view of notes inside a note's text (a table, a kanban…): an island Lexical doesn't edit and
- * that doesn't drag the note (wheeling over it still pans and zooms the canvas). Its toolbar
- * picks the notes, of a
+ * that doesn't drag the note. Wheeling over it pans and zooms the canvas the note is on, except
+ * over a canvas view's own canvas, which pans and zooms itself. Its toolbar picks the notes, of a
  * named type or of the view's own filter (an unnamed type, edited here; naming it makes it a
  * collection like any other), and has the view's own `tools`; then the view itself, once there
  * are notes.
@@ -118,6 +119,7 @@ export function ViewFrame({
     : null;
   // A new filter starts open; an existing one opens from the toolbar.
   const [filterOpen, setFilterOpen] = useState(false);
+  const { noDrag } = useFlowClasses();
 
   // An own filter goes with the view: it's deleted once the view shows something else.
   const dropOwn = () => {
@@ -155,7 +157,7 @@ export function ViewFrame({
 
   return (
     <PopupContainerContext.Provider value={viewportPortal}>
-      <div contentEditable={false} className="nodrag my-2 rounded-md border border-gray-200">
+      <div contentEditable={false} className={`${noDrag} my-2 rounded-md border border-gray-200`}>
         <div className="flex flex-wrap items-center gap-1 border-b border-gray-200 bg-gray-50 px-1.5 py-1 whitespace-nowrap">
           <Icon className="size-3.5 shrink-0 text-gray-500" />
           <span className="text-xs text-gray-600">{label}</span>

@@ -9,6 +9,15 @@ const MENTION_TARGET_ATTR = "data-mention-target";
 /** Handle ID for the `index`-th mention in a note, in document order. */
 const mentionHandleId = (index: number) => `mention-${index}`;
 
+/**
+ * The rendered mentions of a note: in its own text, not in notes shown in a canvas inside it
+ * (they're inside its element too).
+ */
+const ownMentions = (container: Element, note: Element) =>
+  Array.from(container.querySelectorAll<HTMLElement>(`[${MENTION_TARGET_ATTR}]`)).filter(
+    (el) => el.closest(".react-flow__node") === note,
+  );
+
 /** The note containing a rendered mention element, and the ID of that mention's handle. */
 export function locateMention(el: Element): { sourceId: string; handleId: string } | null {
   const node = el.closest<HTMLElement>(".react-flow__node");
@@ -16,7 +25,7 @@ export function locateMention(el: Element): { sourceId: string; handleId: string
   if (!node || !sourceId) {
     return null;
   }
-  const index = Array.from(node.querySelectorAll(`[${MENTION_TARGET_ATTR}]`)).indexOf(el);
+  const index = ownMentions(node, node).indexOf(el as HTMLElement);
   return index < 0 ? null : { sourceId, handleId: mentionHandleId(index) };
 }
 
@@ -53,18 +62,16 @@ export function useMentionAnchors(
       const zoom = store.getState().transform[2];
       // Absolutely positioned handles are offset from the padding box, inside the border.
       const rootTop = root.getBoundingClientRect().top + root.clientTop * zoom;
-      const next = Array.from(
-        content.querySelectorAll<HTMLElement>(`[${MENTION_TARGET_ATTR}]`),
-        (el, i): MentionAnchor => {
-          const rect = el.getBoundingClientRect();
-          const mid = rect.top + rect.height / 2;
-          return {
-            handleId: mentionHandleId(i),
-            targetId: el.getAttribute(MENTION_TARGET_ATTR)!,
-            y: Math.round((mid - rootTop) / zoom),
-          };
-        },
-      );
+      const note = root.closest(".react-flow__node");
+      const next = (note ? ownMentions(content, note) : []).map((el, i): MentionAnchor => {
+        const rect = el.getBoundingClientRect();
+        const mid = rect.top + rect.height / 2;
+        return {
+          handleId: mentionHandleId(i),
+          targetId: el.getAttribute(MENTION_TARGET_ATTR)!,
+          y: Math.round((mid - rootTop) / zoom),
+        };
+      });
       setAnchors((prev) => (sameAnchors(prev, next) ? prev : next));
     };
     const schedule = () => {

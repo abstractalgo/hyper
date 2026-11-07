@@ -5,6 +5,7 @@ import type { Klass, LexicalNode } from "lexical";
 
 import { EquationNode } from "./equations/EquationNode";
 import { NoteMentionNode } from "./mentions/NoteMentionNode";
+import { CanvasViewNode } from "./views/CanvasViewNode";
 import { KanbanViewNode } from "./views/KanbanViewNode";
 import { TableViewNode } from "./views/TableViewNode";
 
@@ -20,4 +21,5 @@ export const EDITOR_NODES: Klass<LexicalNode>[] = [
   EquationNode,
   TableViewNode,
   KanbanViewNode,
+  CanvasViewNode,
 ];

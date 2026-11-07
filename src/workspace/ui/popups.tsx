@@ -9,9 +9,17 @@ export const PopupContainerContext = createContext<HTMLElement | null | undefine
 
 export const usePopupContainer = () => useContext(PopupContainerContext);
 
-/** React Flow's in-viewport portal layer (null until the canvas has mounted). */
+/**
+ * React Flow's in-viewport portal layer (null until the canvas has mounted): this canvas's own,
+ * not that of a canvas shown inside one of its notes (which is inside its element too).
+ */
 export const useViewportPortal = () =>
-  useStore((s) => s.domNode?.querySelector<HTMLElement>(".react-flow__viewport-portal") ?? null);
+  useStore(
+    (s) =>
+      [...(s.domNode?.querySelectorAll<HTMLElement>(".react-flow__viewport-portal") ?? [])].find(
+        (portal) => portal.closest(".react-flow") === s.domNode,
+      ) ?? null,
+  );
 
 /**
  * For Positioner elements. The viewport disables pointer events; the z-index clears selected

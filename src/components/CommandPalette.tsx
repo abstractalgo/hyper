@@ -6,6 +6,7 @@ import {
   TextCursorInputIcon,
   TextSelectIcon,
   FocusIcon,
+  LayoutDashboardIcon,
   PlusIcon,
   ScanIcon,
   SettingsIcon,
@@ -26,6 +27,7 @@ import {
   selectionAsContent,
   type HeldSelection,
 } from "../editor/heldSelection";
+import { $createCanvasViewNode } from "../editor/views/CanvasViewNode";
 import { $createKanbanViewNode } from "../editor/views/KanbanViewNode";
 import { $createTableViewNode } from "../editor/views/TableViewNode";
 import { nextNoteTitle, NOTE_WIDTH, openWorkspace, useCanvasStore } from "../store/canvas";
@@ -185,6 +187,12 @@ function PaletteBody({
             label: "Insert kanban",
             Icon: SquareKanbanIcon,
             run: () => requestAnimationFrame(() => insertView(held, $createKanbanViewNode)),
+          },
+          {
+            key: "insert-canvas",
+            label: "Insert canvas",
+            Icon: LayoutDashboardIcon,
+            run: () => requestAnimationFrame(() => insertView(held, $createCanvasViewNode)),
           },
         ]
       : []),

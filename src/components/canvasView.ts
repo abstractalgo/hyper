@@ -24,11 +24,28 @@ export type MentionLink = {
 type Highlight = { kind: "link"; link: MentionLink } | { kind: "incoming"; noteId: string };
 
 /**
+ * React Flow's class names for "don't drag, pan or zoom the canvas from here". React Flow looks
+ * for them on every ancestor of what's under the pointer, past its own canvas, so a canvas inside
+ * a note gets names of its own: the canvas it's in then doesn't switch off its dragging, panning
+ * and zooming (and its own markers don't switch off the outer canvas's).
+ */
+export type FlowClasses = { noDrag: string; noPan: string; noWheel: string };
+
+/** React Flow's own names, for the main canvas. */
+export const DEFAULT_FLOW_CLASSES: FlowClasses = {
+  noDrag: "nodrag",
+  noPan: "nopan",
+  noWheel: "nowheel",
+};
+
+/**
  * One canvas's own state: where its notes are, the `@mention` links between them, and which of
  * those are highlighted. Every canvas has its own (the main one, and each canvas view in a note),
  * so nothing here leaks into another canvas, even when they show the same notes.
  */
 export type CanvasViewState = {
+  /** This canvas's class names for "don't drag, pan or zoom from here". */
+  classes: FlowClasses;
   /** Placements as shown, including notes being dragged or resized. */
   layout: Layout;
   /** Where each note's mentions are, by note ID. Links are derived from these. */
@@ -61,8 +78,11 @@ function pruned(s: Pick<CanvasViewState, "layout" | "anchors" | "highlight">): H
   return h && isLink(s, h.link) ? h : null;
 }
 
-export function createCanvasView(): StoreApi<CanvasViewState> {
+export function createCanvasView(
+  classes: FlowClasses = DEFAULT_FLOW_CLASSES,
+): StoreApi<CanvasViewState> {
   return createStore<CanvasViewState>((set) => ({
+    classes,
     layout: {},
     anchors: {},
     hoveredMention: null,
@@ -125,3 +145,12 @@ const NO_CANVAS = createCanvasView();
 export function useCanvasView<T>(selector: (s: CanvasViewState) => T): T {
   return useStore(useContext(CanvasViewContext) ?? NO_CANVAS, selector);
 }
+
+/** The class names of the canvas a component is in (see FlowClasses). */
+export const useFlowClasses = () => useCanvasView((s) => s.classes);
+
+/**
+ * The notes whose text the current view is in, outermost first. A canvas view leaves them out,
+ * so a note never shows inside itself (and views can't nest forever).
+ */
+export const AncestorsContext = createContext<readonly string[]>([]);

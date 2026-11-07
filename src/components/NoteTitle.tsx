@@ -1,5 +1,7 @@
 import { useLayoutEffect, useRef, useState, type KeyboardEvent } from "react";
 
+import { useFlowClasses } from "./canvasView";
+
 type NoteTitleProps = {
   title: string;
   onRename: (title: string) => void;
@@ -9,6 +11,7 @@ export function NoteTitle({ title, onRename }: NoteTitleProps) {
   const [draft, setDraft] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const isEditing = draft !== null;
+  const { noDrag } = useFlowClasses();
 
   // Select the title once when editing starts, not on every keystroke.
   useLayoutEffect(() => {
@@ -50,7 +53,7 @@ export function NoteTitle({ title, onRename }: NoteTitleProps) {
       onChange={(e) => setDraft(e.target.value)}
       onBlur={commit}
       onKeyDown={handleKeyDown}
-      className="nodrag w-full rounded border border-blue-400 bg-white px-1 text-sm font-semibold text-gray-900 outline-none"
+      className={`${noDrag} w-full rounded border border-blue-400 bg-white px-1 text-sm font-semibold text-gray-900 outline-none`}
     />
   );
 }

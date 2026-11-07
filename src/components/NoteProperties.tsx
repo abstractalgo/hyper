@@ -3,6 +3,7 @@ import { EllipsisVerticalIcon } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { useCanvasStore, useNoteData, type PropertiesPosition } from "../store/canvas";
+import { useFlowClasses } from "./canvasView";
 import {
   declarations,
   entriesOfTypes,
@@ -64,6 +65,7 @@ export function NoteProperties({ noteId, selected }: { noteId: string; selected:
   }, [typeIds, types]);
   const setNoteField = useCanvasStore((s) => s.setNoteField);
   const viewportPortal = useViewportPortal();
+  const { noDrag } = useFlowClasses();
   const position = useCanvasStore((s) => s.propertiesPosition);
   const inline = position === "top-inline";
   const labels = useCanvasStore((s) => (inline ? s.inlineLabels : "both"));
@@ -88,7 +90,7 @@ export function NoteProperties({ noteId, selected }: { noteId: string; selected:
   return (
     <PopupContainerContext.Provider value={viewportPortal}>
       {/* nodrag: using inputs shouldn't drag the note */}
-      <dl className={`nodrag shrink-0 border-gray-100 px-3 py-1.5 ${LAYOUT_CLASSES[position]}`}>
+      <dl className={`${noDrag} shrink-0 border-gray-100 px-3 py-1.5 ${LAYOUT_CLASSES[position]}`}>
         {fields.filter(isShown).map((field) => (
           <div
             key={field.key}

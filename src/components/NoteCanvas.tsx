@@ -9,7 +9,7 @@ import {
   type ReactFlowProps,
   type ReactFlowState,
 } from "@xyflow/react";
-import { useLayoutEffect, useMemo, useState } from "react";
+import { useId, useLayoutEffect, useMemo, useState } from "react";
 import { useStore as useZustandStore, type StoreApi } from "zustand";
 import { useShallow } from "zustand/react/shallow";
 
@@ -25,6 +25,7 @@ import {
 import {
   CanvasViewContext,
   createCanvasView,
+  DEFAULT_FLOW_CLASSES,
   isLinkHighlighted,
   type CanvasViewState,
 } from "./canvasView";
@@ -114,6 +115,8 @@ type NoteCanvasProps = {
   onDeleteNotes?: (ids: string[]) => void;
   /** Notes' heights were measured. */
   onMeasure?: (heights: Record<string, number>) => void;
+  /** A canvas inside a note: it gets class names of its own (see FlowClasses). */
+  nested?: boolean;
 } & Omit<ReactFlowProps<FlowNote>, "nodes" | "edges" | "onNodesChange" | "nodeTypes" | "onDelete">;
 
 /**
@@ -129,6 +132,7 @@ export function NoteCanvas({
   onPlace,
   onDeleteNotes,
   onMeasure,
+  nested = false,
   children,
   ...flowProps
 }: NoteCanvasProps) {
@@ -163,7 +167,15 @@ export function NoteCanvas({
     [JSON.stringify(nodes.map((n) => [n.id, n.position, n.width]))],
   );
   // This canvas's own state; its notes read where the others are from here.
-  const [view] = useState(createCanvasView);
+  const uid = useId().replace(/[^\w-]/g, "");
+  const [view] = useState(() =>
+    createCanvasView(
+      nested
+        ? { noDrag: `nodrag-${uid}`, noPan: `nopan-${uid}`, noWheel: `nowheel-${uid}` }
+        : DEFAULT_FLOW_CLASSES,
+    ),
+  );
+  const { noDrag, noPan, noWheel } = view.getState().classes;
   useLayoutEffect(() => view.getState().setLayout(shown), [view, shown]);
   const edges = useMentionEdges(view, shown);
   const setHighlight = useZustandStore(view, (s) => s.setHighlight);
@@ -240,6 +252,9 @@ export function NoteCanvas({
         onPaneClick={() => setHighlight(null)}
         onNodeClick={() => setHighlight(null)}
         deleteKeyCode={onDeleteNotes ? undefined : null}
+        noDragClassName={noDrag}
+        noPanClassName={noPan}
+        noWheelClassName={noWheel}
         zoomOnDoubleClick={false}
         // Two-finger trackpad scrolling pans; pinch (or Ctrl/Cmd + wheel) zooms. Speed 1 moves the
         // canvas as far as the fingers move, like scrolling a page (React Flow's default is 0.5).

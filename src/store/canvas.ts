@@ -248,7 +248,7 @@ export const createNote = ({
 /** A workspace's state before its board is loaded (what's left of the previous one is reset). */
 const BLANK = {
   initialized: false,
-  propertiesPosition: "top",
+  propertiesPosition: "top-inline",
   inlineLabels: "both",
   deletedTitles: {},
   viewport: null,

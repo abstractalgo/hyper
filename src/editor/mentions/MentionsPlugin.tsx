@@ -10,7 +10,7 @@ import type { TextNode } from "lexical";
 import { useMemo, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 
-import { useCanvasStore, type EditorNode } from "../../store/canvas";
+import { useCanvasStore, type Note } from "../../store/canvas";
 import { NoteIcon } from "../../workspace/icons";
 import { MentionMenu } from "./MentionMenu";
 import { $createNoteMentionNode } from "./NoteMentionNode";
@@ -42,7 +42,7 @@ const mentionTrigger: TriggerFn = (text) => {
 };
 
 /** A stable empty list for the closed menu's store selector. */
-const NO_NOTES: EditorNode[] = [];
+const NO_NOTES: Note[] = [];
 
 class NoteOption extends MenuOption {
   constructor(
@@ -126,7 +126,7 @@ export function MentionsPlugin({ noteId }: MentionsPluginProps) {
   const [query, setQuery] = useState<string | null>(null);
   // Only read while the @ menu is open: subscribing to every note would re-render each note's
   // editor on every drag frame.
-  const nodes = useCanvasStore((s) => (query === null ? NO_NOTES : s.nodes));
+  const nodes = useCanvasStore((s) => (query === null ? NO_NOTES : s.notes));
   const createNoteBeside = useCanvasStore((s) => s.createNoteBeside);
 
   const options = useMemo((): MentionOption[] => {

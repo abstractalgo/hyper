@@ -1,14 +1,17 @@
 import { Dialog } from "@base-ui/react/dialog";
-import { useReactFlow } from "@xyflow/react";
+import { useNodes, useReactFlow } from "@xyflow/react";
 import { go as fuzzySearch } from "fuzzysort";
 import {
   ArrowLeftRightIcon,
   TextCursorInputIcon,
   TextSelectIcon,
   FocusIcon,
+  LayoutDashboardIcon,
   PlusIcon,
   ScanIcon,
   SettingsIcon,
+  SquareKanbanIcon,
+  Table2Icon,
   Trash2Icon,
   ZoomInIcon,
   ZoomOutIcon,
@@ -18,14 +21,19 @@ import { useCallback, useEffect, useState, type ReactNode } from "react";
 
 import {
   holdEditorSelection,
+  insertView,
   replaceWithMention,
   restoreEditorSelection,
   selectionAsContent,
   type HeldSelection,
 } from "../editor/heldSelection";
+import { $createCanvasViewNode } from "../editor/views/CanvasViewNode";
+import { $createKanbanViewNode } from "../editor/views/KanbanViewNode";
+import { $createTableViewNode } from "../editor/views/TableViewNode";
 import { nextNoteTitle, NOTE_WIDTH, openWorkspace, useCanvasStore } from "../store/canvas";
 import { useWorkspaces } from "../store/workspaces";
 import { NoteIcon } from "../workspace/icons";
+import { TYPE_KEY } from "../workspace/typeSystem";
 import { ResultList, useListNavigation } from "../workspace/ui/ResultList";
 import { useGoToNote } from "./useGoToNote";
 
@@ -125,8 +133,8 @@ function PaletteBody({
   onClose: (returnToEditor: boolean) => void;
 }) {
   const [query, setQuery] = useState("");
-  const nodes = useCanvasStore((s) => s.nodes);
-  const schemas = useCanvasStore((s) => s.schemas);
+  const nodes = useCanvasStore((s) => s.notes);
+  const types = useCanvasStore((s) => s.types);
   const addNode = useCanvasStore((s) => s.addNode);
   const createNoteBeside = useCanvasStore((s) => s.createNoteBeside);
   const updateNodeData = useCanvasStore((s) => s.updateNodeData);
@@ -134,7 +142,8 @@ function PaletteBody({
   const { screenToFlowPosition, deleteElements, fitView, zoomIn, zoomOut, zoomTo } = useReactFlow();
   const goToNote = useGoToNote();
 
-  const selected = nodes.filter((n) => n.selected);
+  // Selection is the main canvas's (React Flow's), not the notes'.
+  const selected = useNodes().filter((n) => n.selected);
   const workspaces = useWorkspaces((s) => s.workspaces);
   const activeWorkspaceId = useWorkspaces((s) => s.activeId);
   const actions: Action[] = [
@@ -161,6 +170,29 @@ function PaletteBody({
               updateNodeData(id, { content });
               requestAnimationFrame(() => replaceWithMention(held, id));
             },
+          },
+        ]
+      : []),
+    // Views go into the note being edited, where its caret is.
+    ...(held
+      ? [
+          {
+            key: "insert-table",
+            label: "Insert table",
+            Icon: Table2Icon,
+            run: () => requestAnimationFrame(() => insertView(held, $createTableViewNode)),
+          },
+          {
+            key: "insert-kanban",
+            label: "Insert kanban",
+            Icon: SquareKanbanIcon,
+            run: () => requestAnimationFrame(() => insertView(held, $createKanbanViewNode)),
+          },
+          {
+            key: "insert-canvas",
+            label: "Insert canvas",
+            Icon: LayoutDashboardIcon,
+            run: () => requestAnimationFrame(() => insertView(held, $createCanvasViewNode)),
           },
         ]
       : []),
@@ -265,7 +297,9 @@ function PaletteBody({
         key: n.id,
         text: n.data.title,
         icon: <NoteIcon noteId={n.id} className="size-4" />,
-        hint: schemas.find((s) => s.id === n.data.schemaId)?.name,
+        hint: (n.data.fields[TYPE_KEY] ?? [])
+          .flatMap((id) => types.filter((t) => t.id === id).map((t) => t.name))
+          .join(", "),
         run: () => goToNote(n.id),
       }));
 

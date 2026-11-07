@@ -1,4 +1,5 @@
-import { at, b, buildBoard, eq, i, m, type Sample } from "./build";
+import { all, any, at, b, buildBoard, eq, i, m, sampleCollections, type Sample } from "./build";
+import type { Board } from "../store/canvas";
 
 // Study notes on introductory group theory: definitions, and the results that follow from them.
 // Each note mentions what it builds on, so the links read as "follows from". Notes are placed in
@@ -578,7 +579,18 @@ const sample: Sample<NoteKey, FieldKey, SchemaKey> = {
     },
   },
   optionsX: col(9) + 200,
+  collections: [
+    {
+      name: "To review",
+      type: ({ schema, is }) =>
+        all(
+          any(schema("definition"), schema("theorem"), schema("proposition")),
+          is("confidence", "New", "Shaky"),
+        ),
+    },
+  ],
 };
 
 /** The group theory sample: definitions and theorems, linked by what follows from what. */
-export const createGroupTheoryBoard = () => buildBoard(sample);
+export const createBoard = () => buildBoard(sample);
+export const collectionsFor = (board: Board) => sampleCollections(sample, board);

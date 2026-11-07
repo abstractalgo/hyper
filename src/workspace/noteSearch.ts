@@ -1,11 +1,11 @@
 import { go as fuzzySearch } from "fuzzysort";
 
-import type { EditorNode } from "../store/canvas";
+import type { Note } from "../store/canvas";
 import type { NoteId } from "./model";
 
 /** A search result: an existing note, or an offer to create one with the typed title. */
 export type NoteRow =
-  | { kind: "note"; note: EditorNode; group?: string }
+  | { kind: "note"; note: Note; group?: string }
   | { kind: "create"; title: string };
 
 export const rowKey = (row: NoteRow) => (row.kind === "note" ? row.note.id : "create");
@@ -13,16 +13,17 @@ export const rowKey = (row: NoteRow) => (row.kind === "note" ? row.note.id : "cr
 /**
  * Fuzzy note search for pickers: the given `options` come first (in their order) and are all
  * listed when nothing is typed; then other matching notes (under "Other notes"); then "Create …"
- * if no note has exactly the typed title.
+ * if no note has exactly the typed title (and `create` allows it).
  */
 export function searchNotes(
-  nodes: readonly EditorNode[],
+  nodes: readonly Note[],
   query: string,
   {
     options = [],
     exclude = [],
     limit = 8,
-  }: { options?: NoteId[]; exclude?: NoteId[]; limit?: number },
+    create = true,
+  }: { options?: NoteId[]; exclude?: NoteId[]; limit?: number; create?: boolean },
 ): NoteRow[] {
   const trimmed = query.trim();
   const optionNotes = options.flatMap((id) => nodes.filter((n) => n.id === id));
@@ -30,7 +31,7 @@ export function searchNotes(
     return optionNotes.map((note) => ({ kind: "note", note }));
   }
 
-  const search = (notes: EditorNode[], max: number) =>
+  const search = (notes: Note[], max: number) =>
     fuzzySearch(trimmed, notes, { key: (n) => n.data.title, threshold: 0, limit: max }).map(
       (r) => r.obj,
     );
@@ -44,5 +45,5 @@ export function searchNotes(
     })),
   ];
   const exists = nodes.some((n) => n.data.title.toLowerCase() === trimmed.toLowerCase());
-  return exists ? rows : [...rows, { kind: "create", title: trimmed }];
+  return exists || !create ? rows : [...rows, { kind: "create", title: trimmed }];
 }

@@ -35,7 +35,7 @@ function RadioRow<V extends string>({
   onChange: (value: V) => void;
 }) {
   return (
-    <div className="flex gap-4 pt-1.5 text-sm">
+    <div className="flex gap-4 pt-1 text-sm">
       {options.map((option) => (
         <label key={option.value} className="flex items-center gap-1.5">
           <input
@@ -82,7 +82,7 @@ export function WorkspaceTab() {
   };
 
   return (
-    <form className="flex flex-col gap-3 p-4" onSubmit={(e) => e.preventDefault()}>
+    <form className="flex flex-col gap-2.5 px-4 py-3" onSubmit={(e) => e.preventDefault()}>
       <FormRow label="Name">
         <input
           aria-label="Workspace name"

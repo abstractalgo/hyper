@@ -7,13 +7,17 @@ import { createHeadlessEditor } from "@lexical/headless";
 import {
   $getNodeByKey,
   $getRoot,
+  $createParagraphNode,
   $getSelection,
+  $insertNodes,
+  $isParagraphNode,
   $isRangeSelection,
   $setSelection,
   getNearestEditorFromDOMNode,
   SKIP_SCROLL_INTO_VIEW_TAG,
   type BaseSelection,
   type LexicalEditor,
+  type LexicalNode,
 } from "lexical";
 
 import { $createNoteMentionNode } from "./mentions/NoteMentionNode";
@@ -88,6 +92,29 @@ export function replaceWithMention(held: HeldSelection, noteId: string) {
     const mention = $createNoteMentionNode(noteId);
     selection.insertNodes([mention]);
     mention.selectNext();
+  });
+}
+
+/**
+ * Inserts a view (a table, a kanban…) made by `$create` at the held selection: in place of the
+ * paragraph it's in if that's empty, else right after its block (text isn't split around it).
+ */
+export function insertView(held: HeldSelection, $create: () => LexicalNode) {
+  resume(held, () => {
+    const selection = $getSelection();
+    const block = selection?.getNodes()[0]?.getTopLevelElement();
+    const view = $create();
+    if (!block) {
+      $insertNodes([view]);
+    } else if ($isParagraphNode(block) && block.isEmpty()) {
+      block.replace(view);
+    } else {
+      block.insertAfter(view);
+    }
+    // Text can't follow a view that ends the note; give it a paragraph to type in.
+    if (!view.getNextSibling()) {
+      view.insertAfter($createParagraphNode());
+    }
   });
 }
 

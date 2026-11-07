@@ -1,10 +1,17 @@
 import { Menu } from "@base-ui/react/menu";
 import { EllipsisVerticalIcon } from "lucide-react";
-import { useState } from "react";
-import { useShallow } from "zustand/react/shallow";
+import { useMemo, useState } from "react";
 
 import { useCanvasStore, useNoteData, type PropertiesPosition } from "../store/canvas";
-import type { FieldDef } from "../workspace/model";
+import { useFlowClasses } from "./canvasView";
+import {
+  declarations,
+  entriesOfTypes,
+  ICON_KEY,
+  TYPE_KEY,
+  type Entry,
+} from "../workspace/typeSystem";
+import type { FieldValue } from "../workspace/model";
 import { FieldValueEditor } from "../workspace/ui/FieldValueEditor";
 import {
   POPUP_CLASS,
@@ -29,23 +36,36 @@ const LAYOUT_CLASSES: Record<PropertiesPosition, string> = {
   right: `${GRID} max-w-1/2 border-l`,
 };
 
+/** A field as its declaration: what it's called, its icon, and what its values are. */
+type Field = Entry & { decl: NonNullable<Entry["decl"]> };
+
+const NO_VALUES: Record<string, FieldValue> = {};
+
 /**
- * The note's schema fields as editable names and values: above the text (in rows, or inline), or
- * in a column right of it (a workspace setting).
+ * The fields of the note's types as editable names and values, in order. Not Type and Icon: the
+ * note shows those itself (its title bar's icon and menu). Above the text (in rows, or inline), or
+ * in a column right of it (a workspace setting). Plain notes (no type) have none.
  */
 export function NoteProperties({ noteId, selected }: { noteId: string; selected: boolean }) {
-  const fields = useCanvasStore(
-    useShallow((s) => {
-      const note = s.nodes.find((n) => n.id === noteId);
-      const schema = s.schemas.find((sc) => sc.id === note?.data.schemaId);
-      return (schema?.fieldIds ?? [])
-        .map((id) => s.fields.find((f) => f.id === id))
-        .filter((f): f is FieldDef => f !== undefined);
-    }),
-  );
-  const values = useNoteData(noteId, "fields");
+  const values = useNoteData(noteId, "fields") ?? NO_VALUES;
+  const types = useCanvasStore((s) => s.types);
+  const typeIds = values[TYPE_KEY];
+  const fields = useMemo(() => {
+    const ids = (typeIds ?? []).map(String);
+    if (ids.length === 0) {
+      return [];
+    }
+    const declared = declarations(types);
+    return entriesOfTypes(ids, types).flatMap((entry) => {
+      const field = declared.get(entry.key);
+      return field?.decl && entry.key !== TYPE_KEY && entry.key !== ICON_KEY
+        ? [field as Field]
+        : [];
+    });
+  }, [typeIds, types]);
   const setNoteField = useCanvasStore((s) => s.setNoteField);
   const viewportPortal = useViewportPortal();
+  const { noDrag } = useFlowClasses();
   const position = useCanvasStore((s) => s.propertiesPosition);
   const inline = position === "top-inline";
   const labels = useCanvasStore((s) => (inline ? s.inlineLabels : "both"));
@@ -59,8 +79,8 @@ export function NoteProperties({ noteId, selected }: { noteId: string; selected:
       setRevealed([]);
     }
   }
-  const isShown = (field: FieldDef) =>
-    !inline || (values?.[field.id]?.length ?? 0) > 0 || revealed.includes(field.id);
+  const isShown = (field: Field) =>
+    !inline || (values[field.key]?.length ?? 0) > 0 || revealed.includes(field.key);
 
   if (fields.length === 0) {
     return null;
@@ -70,10 +90,10 @@ export function NoteProperties({ noteId, selected }: { noteId: string; selected:
   return (
     <PopupContainerContext.Provider value={viewportPortal}>
       {/* nodrag: using inputs shouldn't drag the note */}
-      <dl className={`nodrag shrink-0 border-gray-100 px-3 py-1.5 ${LAYOUT_CLASSES[position]}`}>
+      <dl className={`${noDrag} shrink-0 border-gray-100 px-3 py-1.5 ${LAYOUT_CLASSES[position]}`}>
         {fields.filter(isShown).map((field) => (
           <div
-            key={field.id}
+            key={field.key}
             // In a grid each name and value take a cell; inline, they stay together as one item.
             className={
               position === "top-inline"
@@ -83,20 +103,20 @@ export function NoteProperties({ noteId, selected }: { noteId: string; selected:
           >
             <dt
               className="flex min-w-0 items-center gap-1.5 text-xs text-gray-500"
-              title={field.name}
+              title={field.decl.label}
             >
-              {labels !== "name" && <FieldIcon field={field} className="size-3.5" />}
+              {labels !== "name" && <FieldIcon entry={field} className="size-3.5" />}
               {/* Icons only: the name is still there for screen readers (and on hover). */}
-              <span className={labels === "icon" ? "sr-only" : "truncate"}>{field.name}</span>
+              <span className={labels === "icon" ? "sr-only" : "truncate"}>{field.decl.label}</span>
             </dt>
             {/* Inline, every value shows in full: editors take their content's width (not the
                 row's), and text wraps rather than ending in "…". Inputs don't pull themselves 5px left
                 (to line up across rows): there are no rows, and it'd clip their text. */}
             <dd className={inline ? INLINE_VALUE_CLASS : "min-w-0"}>
               <FieldValueEditor
-                field={field}
-                value={values?.[field.id] ?? []}
-                onChange={(value) => setNoteField(noteId, field.id, value)}
+                entry={field}
+                value={values[field.key] ?? []}
+                onChange={(value) => setNoteField(noteId, field.key, value)}
                 noteId={noteId}
               />
             </dd>
@@ -106,7 +126,7 @@ export function NoteProperties({ noteId, selected }: { noteId: string; selected:
           <EmptyFieldsMenu
             fields={emptyFields}
             container={viewportPortal}
-            onPick={(id) => setRevealed((ids) => [...ids, id])}
+            onPick={(key) => setRevealed((keys) => [...keys, key])}
           />
         )}
       </dl>
@@ -123,9 +143,9 @@ function EmptyFieldsMenu({
   container,
   onPick,
 }: {
-  fields: FieldDef[];
+  fields: Field[];
   container: HTMLElement | null;
-  onPick: (fieldId: string) => void;
+  onPick: (key: string) => void;
 }) {
   return (
     <Menu.Root>
@@ -142,9 +162,13 @@ function EmptyFieldsMenu({
         <Menu.Positioner sideOffset={4} align="start" className={POSITIONER_CLASS}>
           <Menu.Popup className={`min-w-36 py-1 ${POPUP_CLASS}`}>
             {fields.map((field) => (
-              <Menu.Item key={field.id} onClick={() => onPick(field.id)} className={menuItemClass}>
-                <FieldIcon field={field} className="size-3.5" />
-                {field.name}
+              <Menu.Item
+                key={field.key}
+                onClick={() => onPick(field.key)}
+                className={menuItemClass}
+              >
+                <FieldIcon entry={field} className="size-3.5" />
+                {field.decl.label}
               </Menu.Item>
             ))}
           </Menu.Popup>

@@ -1,7 +1,7 @@
 import { useReactFlow, useStoreApi } from "@xyflow/react";
 import { useCallback } from "react";
 
-import { useCanvasStore } from "../store/canvas";
+import { useCanvasView } from "./canvasView";
 
 /**
  * Returns a function that pans the canvas so a note is centered (keeping the zoom level) and
@@ -10,7 +10,7 @@ import { useCanvasStore } from "../store/canvas";
 export function useGoToNote() {
   const { getInternalNode, getZoom, setCenter } = useReactFlow();
   const flowStore = useStoreApi();
-  const setHighlight = useCanvasStore((s) => s.setHighlight);
+  const setHighlight = useCanvasView((s) => s.setHighlight);
 
   return useCallback(
     (noteId: string) => {

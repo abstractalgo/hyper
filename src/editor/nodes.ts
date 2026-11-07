@@ -5,6 +5,9 @@ import type { Klass, LexicalNode } from "lexical";
 
 import { EquationNode } from "./equations/EquationNode";
 import { NoteMentionNode } from "./mentions/NoteMentionNode";
+import { CanvasViewNode } from "./views/CanvasViewNode";
+import { KanbanViewNode } from "./views/KanbanViewNode";
+import { TableViewNode } from "./views/TableViewNode";
 
 /** Every node type a note can contain. Shared by the live editor and headless tooling. */
 export const EDITOR_NODES: Klass<LexicalNode>[] = [
@@ -16,4 +19,7 @@ export const EDITOR_NODES: Klass<LexicalNode>[] = [
   AutoLinkNode,
   NoteMentionNode,
   EquationNode,
+  TableViewNode,
+  KanbanViewNode,
+  CanvasViewNode,
 ];

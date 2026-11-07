@@ -25,6 +25,7 @@ import {
   dependsOn,
   fieldParts,
   isSelf,
+  isUnnamed,
   members,
   NOTE_TYPE_ID,
   TYPE_KEY,
@@ -87,8 +88,8 @@ function useMemberCounts() {
 
 const typeListItem = (t: NamedType, count: number): ListItem => ({
   id: t.id,
-  label: t.name,
-  detail: `${plural(count, "note")}${t.builtIn ? " · built-in" : ""}`,
+  label: isUnnamed(t) ? "Unnamed filter" : t.name,
+  detail: `${plural(count, "note")}${t.builtIn ? " · built-in" : isUnnamed(t) ? " · a table's" : ""}`,
   icon: <TypeIcon typeId={t.id} className="size-4" />,
 });
 
@@ -201,7 +202,8 @@ function TypeForm({ initial, isNew, onSaved, onDeleted }: ItemFormProps<NamedTyp
   const matching = members({ kind: "ref", typeId: draft.id }, scope);
   const otherDeclared = declarations(types.filter((t) => t.id !== draft.id));
   const errors = [
-    ...(draft.name.trim() ? [] : ["Name is required."]),
+    // An unnamed type (a table's own filter) may stay so; naming it makes it an ordinary type.
+    ...(draft.name.trim() || isUnnamed(initial) ? [] : ["Name is required."]),
     ...(parts.fields.some((f) => "entry" in f && !f.entry.decl?.label.trim())
       ? ["Every field needs a name."]
       : []),
@@ -715,7 +717,7 @@ function NotesOfPicker({ entry, onChange }: { entry: Entry; onChange: (entry: En
           });
         }}
         items={types
-          .filter((t) => t.id !== NOTE_TYPE_ID)
+          .filter((t) => t.id !== NOTE_TYPE_ID && !isUnnamed(t))
           .map((t) => ({
             value: t.id,
             label: t.name,

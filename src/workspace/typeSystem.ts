@@ -61,6 +61,11 @@ export type Entry = {
 
 export type NamedType = {
   id: TypeId;
+  /**
+   * Empty for an unnamed type: one made on the spot, e.g. a table's own filter. It's in the
+   * workspace's types like any other, but other pickers don't offer it; naming it makes it an
+   * ordinary type.
+   */
   name: string;
   icon: IconRef;
   color: TypeColor;
@@ -555,3 +560,6 @@ export function mapDeclarations(type: TypeExpr, edit: (entry: Entry) => Entry): 
       return type;
   }
 }
+
+/** Whether a type has no name yet (see NamedType.name). */
+export const isUnnamed = (type: NamedType) => type.name === "";

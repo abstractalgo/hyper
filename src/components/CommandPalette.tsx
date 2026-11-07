@@ -9,6 +9,8 @@ import {
   PlusIcon,
   ScanIcon,
   SettingsIcon,
+  SquareKanbanIcon,
+  Table2Icon,
   Trash2Icon,
   ZoomInIcon,
   ZoomOutIcon,
@@ -18,11 +20,14 @@ import { useCallback, useEffect, useState, type ReactNode } from "react";
 
 import {
   holdEditorSelection,
+  insertView,
   replaceWithMention,
   restoreEditorSelection,
   selectionAsContent,
   type HeldSelection,
 } from "../editor/heldSelection";
+import { $createKanbanViewNode } from "../editor/views/KanbanViewNode";
+import { $createTableViewNode } from "../editor/views/TableViewNode";
 import { nextNoteTitle, NOTE_WIDTH, openWorkspace, useCanvasStore } from "../store/canvas";
 import { useWorkspaces } from "../store/workspaces";
 import { NoteIcon } from "../workspace/icons";
@@ -163,6 +168,23 @@ function PaletteBody({
               updateNodeData(id, { content });
               requestAnimationFrame(() => replaceWithMention(held, id));
             },
+          },
+        ]
+      : []),
+    // Views go into the note being edited, where its caret is.
+    ...(held
+      ? [
+          {
+            key: "insert-table",
+            label: "Insert table",
+            Icon: Table2Icon,
+            run: () => requestAnimationFrame(() => insertView(held, $createTableViewNode)),
+          },
+          {
+            key: "insert-kanban",
+            label: "Insert kanban",
+            Icon: SquareKanbanIcon,
+            run: () => requestAnimationFrame(() => insertView(held, $createKanbanViewNode)),
           },
         ]
       : []),

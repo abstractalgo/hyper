@@ -17,6 +17,7 @@ import {
   dependsOn,
   entriesOfTypes,
   isForNotes,
+  isUnnamed,
   TYPE_KEY,
   valueKind,
   type Entry,
@@ -56,10 +57,13 @@ export function TypeBuilder({
   return <GroupEditor group={type} onChange={onChange} selfId={selfId} />;
 }
 
-/** Named types a condition of type `selfId` may refer to (not itself, nor types using it). */
+/**
+ * Named types a condition of type `selfId` may refer to: not itself, nor types using it, nor
+ * unnamed ones (each belongs to the table it was made for).
+ */
 function useEligibleTypes(selfId: TypeId) {
   const types = useCanvasStore((s) => s.types);
-  return types.filter((t) => t.id !== selfId && !dependsOn(t.expr, selfId, types));
+  return types.filter((t) => t.id !== selfId && !isUnnamed(t) && !dependsOn(t.expr, selfId, types));
 }
 
 /** A field condition: a shape with one entry that only constrains (declares nothing). */
